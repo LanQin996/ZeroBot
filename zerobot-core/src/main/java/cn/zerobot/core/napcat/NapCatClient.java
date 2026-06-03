@@ -59,14 +59,14 @@ public class NapCatClient implements Closeable {
         if (config.getAccessToken() != null && !config.getAccessToken().isBlank()) {
             builder.header("Authorization", "Bearer " + config.getAccessToken());
         }
-        log.info("Connecting to NapCat WebSocket: {}", config.getWsUrl());
+        log.info("正在连接 NapCat WebSocket：{}", config.getWsUrl());
         return builder.buildAsync(URI.create(config.getWsUrl()), new Listener())
                 .thenAccept(ws -> this.webSocket = ws);
     }
 
     public void start() {
         connect().exceptionally(error -> {
-            log.warn("NapCat WebSocket connect failed: {}. Check napcat.wsUrl and ensure NapCat OneBot 11 WebSocket is enabled.",
+            log.warn("NapCat WebSocket 连接失败：{}。请检查 napcat.wsUrl，并确认 NapCat 已开启 OneBot 11 正向 WebSocket。",
                     rootMessage(error));
             scheduleReconnectAfterFailure();
             return null;
@@ -139,7 +139,7 @@ public class NapCatClient implements Closeable {
         int failures = reconnectFailures.incrementAndGet();
         long delayMs = reconnectDelayMs(failures);
         if (isCooldownFailure(failures)) {
-            log.warn("NapCat WebSocket failed {} times; cooling down for {} ms before retrying.", failures, delayMs);
+            log.warn("NapCat WebSocket 已连续失败 {} 次，冷却 {} 毫秒后再重试。", failures, delayMs);
         }
         scheduler.schedule(() -> {
             reconnectScheduled.set(false);
@@ -147,7 +147,7 @@ public class NapCatClient implements Closeable {
                 return;
             }
             connect().exceptionally(error -> {
-                log.warn("NapCat WebSocket reconnect failed: {}", rootMessage(error));
+                log.warn("NapCat WebSocket 重连失败：{}", rootMessage(error));
                 scheduleReconnectAfterFailure();
                 return null;
             });
@@ -179,7 +179,7 @@ public class NapCatClient implements Closeable {
 
         @Override
         public void onOpen(WebSocket webSocket) {
-            log.info("NapCat WebSocket connected");
+            log.info("NapCat WebSocket 已连接");
             reconnectFailures.set(0);
             reconnectScheduled.set(false);
             WebSocket.Listener.super.onOpen(webSocket);
@@ -198,7 +198,7 @@ public class NapCatClient implements Closeable {
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-            log.info("NapCat WebSocket closed: {} {}", statusCode, reason);
+            log.info("NapCat WebSocket 已关闭：{} {}", statusCode, reason);
             NapCatClient.this.webSocket = null;
             scheduleReconnectAfterFailure();
             return CompletableFuture.completedFuture(null);
@@ -206,7 +206,7 @@ public class NapCatClient implements Closeable {
 
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
-            log.warn("NapCat WebSocket error: {}", rootMessage(error));
+            log.warn("NapCat WebSocket 异常：{}", rootMessage(error));
             NapCatClient.this.webSocket = null;
             scheduleReconnectAfterFailure();
         }

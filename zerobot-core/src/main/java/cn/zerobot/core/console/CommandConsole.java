@@ -174,7 +174,6 @@ public class CommandConsole implements AutoCloseable {
         log.info("  plugin reload <id>           重载插件。");
         log.info("  plugin reload-all            重载全部插件。");
         log.info("  stop                         停止 ZeroBot。");
-        log.info("兼容旧命令：plugins, load, unload, reload, reload-all, exit, quit");
     }
 
     private void printPluginHelp() {

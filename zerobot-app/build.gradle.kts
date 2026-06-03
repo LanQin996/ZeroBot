@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     implementation(project(":zerobot-core"))
-    implementation("org.slf4j:slf4j-simple:2.0.13")
+    implementation("ch.qos.logback:logback-classic:1.5.6")
 }
 
 application {
@@ -19,6 +19,9 @@ distributions {
             }
             into("plugins") {
                 from(rootProject.file("plugins/.keep"))
+            }
+            from(rootProject.file("start.bat")) {
+                into("")
             }
         }
     }

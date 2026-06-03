@@ -45,6 +45,26 @@ pluginsDir: "plugins"
 java -jar ZeroBot-0.1.0.jar
 ```
 
+Windows `cmd` 中建议使用启动脚本，它会自动切换 UTF-8：
+
+```cmd
+start.bat
+```
+
+如果仍想手动启动，先执行：
+
+```cmd
+chcp 65001
+```
+
+再运行：
+
+```cmd
+java -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -jar ZeroBot-0.1.0.jar
+```
+
+也可以使用 Windows Terminal 或 PowerShell 7。
+
 开发目录中也可以直接运行：
 
 ```powershell
@@ -65,18 +85,6 @@ plugin unload <id>
 plugin reload <id>
 plugin reload-all
 stop
-```
-
-兼容旧命令：
-
-```text
-plugins
-load <jar>
-unload <id>
-reload <id>
-reload-all
-exit
-quit
 ```
 
 ## 示例插件

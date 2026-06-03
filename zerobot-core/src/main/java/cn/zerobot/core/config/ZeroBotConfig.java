@@ -7,10 +7,13 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ZeroBotConfig {
     private NapCatConfig napcat = new NapCatConfig();
     private String pluginsDir = "plugins";
+    private List<String> superAdmins = new ArrayList<>();
 
     public static ZeroBotConfig load(Path path) throws IOException {
         ObjectMapper mapper = yamlMapper();
@@ -43,6 +46,14 @@ public class ZeroBotConfig {
 
     public void setPluginsDir(String pluginsDir) {
         this.pluginsDir = pluginsDir;
+    }
+
+    public List<String> getSuperAdmins() {
+        return superAdmins;
+    }
+
+    public void setSuperAdmins(List<String> superAdmins) {
+        this.superAdmins = superAdmins == null ? new ArrayList<>() : superAdmins;
     }
 
     public static class NapCatConfig {

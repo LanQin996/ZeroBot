@@ -33,4 +33,17 @@ class ZeroBotConfigTest {
 
         assertThat(loaded.getPluginsDir()).isEqualTo("plugins");
     }
+
+    @Test
+    void missingSuperAdminsUsesEmptyList() throws Exception {
+        Path config = tempDir.resolve("config.yml");
+        Files.writeString(config, """
+                napcat:
+                  wsUrl: "ws://127.0.0.1:3001/"
+                """);
+
+        ZeroBotConfig loaded = ZeroBotConfig.load(config);
+
+        assertThat(loaded.getSuperAdmins()).isEmpty();
+    }
 }

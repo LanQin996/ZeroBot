@@ -15,6 +15,8 @@ import cn.zerobot.api.event.PrivateMessageListener;
 import cn.zerobot.api.event.RequestEvent;
 import cn.zerobot.api.event.RequestListener;
 import com.fasterxml.jackson.databind.JsonNode;
+import cn.zerobot.api.permission.PermissionService;
+import cn.zerobot.api.permission.PermissionSubject;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -66,6 +68,29 @@ public interface BotContext {
      * 群消息会回复到原群，私聊消息会回复给原发送者。
      */
     CompletableFuture<ActionResponse<JsonNode>> reply(MessageEvent event, Object message);
+
+    /**
+     * 权限服务。
+     * <p>
+     * 插件应使用统一权限节点判断能力，方便后续接入权限组管理插件。
+     */
+    PermissionService permission();
+
+    /**
+     * 判断消息发送者是否拥有指定权限节点。
+     */
+    default boolean hasPermission(MessageEvent event, String permission) {
+        return permission().hasPermission(PermissionSubject.from(event), permission);
+    }
+
+    /**
+     * 判断消息发送者是否拥有指定权限节点，并指定默认结果。
+     * <p>
+     * 如果某个命令只是声明权限节点用于后续权限插件管理，但当前默认所有人可用，可以传 {@code true}。
+     */
+    default boolean hasPermission(MessageEvent event, String permission, boolean defaultAllowed) {
+        return permission().hasPermission(PermissionSubject.from(event), permission, defaultAllowed);
+    }
 
     /**
      * 当前插件的配置目录。

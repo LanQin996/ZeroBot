@@ -4,6 +4,7 @@ import cn.zerobot.core.config.ZeroBotConfig;
 import cn.zerobot.core.console.CommandConsole;
 import cn.zerobot.core.event.DefaultEventBus;
 import cn.zerobot.core.napcat.NapCatClient;
+import cn.zerobot.core.permission.SuperAdminPermissionService;
 import cn.zerobot.core.plugin.PluginManager;
 import cn.zerobot.core.runtime.DefaultBotContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +26,8 @@ public class ZeroBotApplication {
         ObjectMapper mapper = new ObjectMapper();
         DefaultEventBus eventBus = new DefaultEventBus();
         NapCatClient client = new NapCatClient(config.getNapcat(), eventBus, mapper);
-        DefaultBotContext context = new DefaultBotContext(log, client, eventBus);
+        SuperAdminPermissionService permissionService = new SuperAdminPermissionService(config.getSuperAdmins());
+        DefaultBotContext context = new DefaultBotContext(log, client, eventBus, permissionService);
         PluginManager pluginManager = new PluginManager(pluginsDir, baseDir, context);
         CommandConsole console = new CommandConsole(pluginManager);
 

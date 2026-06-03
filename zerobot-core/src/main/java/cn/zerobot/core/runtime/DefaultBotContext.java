@@ -5,6 +5,7 @@ import cn.zerobot.api.BotContext;
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.permission.PermissionService;
 import cn.zerobot.core.event.DefaultEventBus;
 import cn.zerobot.core.napcat.NapCatClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,11 +21,13 @@ public class DefaultBotContext implements BotContext {
     private final Logger logger;
     private final NapCatClient client;
     private final DefaultEventBus eventBus;
+    private final PermissionService permissionService;
 
-    public DefaultBotContext(Logger logger, NapCatClient client, DefaultEventBus eventBus) {
+    public DefaultBotContext(Logger logger, NapCatClient client, DefaultEventBus eventBus, PermissionService permissionService) {
         this.logger = logger;
         this.client = client;
         this.eventBus = eventBus;
+        this.permissionService = permissionService;
     }
 
     @Override
@@ -65,6 +68,11 @@ public class DefaultBotContext implements BotContext {
         params.put("user_id", event.userId());
         params.put("message", message);
         return callAction("send_msg", params);
+    }
+
+    @Override
+    public PermissionService permission() {
+        return permissionService;
     }
 
     @Override

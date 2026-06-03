@@ -5,6 +5,7 @@ import cn.zerobot.api.BotContext;
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.permission.PermissionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -59,6 +60,11 @@ class PluginScopedBotContext implements BotContext {
     @Override
     public CompletableFuture<ActionResponse<JsonNode>> reply(MessageEvent event, Object message) {
         return delegate.reply(event, message);
+    }
+
+    @Override
+    public PermissionService permission() {
+        return delegate.permission();
     }
 
     @Override

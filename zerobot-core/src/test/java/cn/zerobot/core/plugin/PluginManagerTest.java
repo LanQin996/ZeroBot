@@ -5,6 +5,8 @@ import cn.zerobot.api.BotContext;
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.permission.PermissionService;
+import cn.zerobot.api.permission.PermissionSubject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -195,6 +197,11 @@ class PluginManagerTest {
         @Override
         public CompletableFuture<ActionResponse<JsonNode>> reply(MessageEvent event, Object message) {
             return callAction("send_msg", Map.of());
+        }
+
+        @Override
+        public PermissionService permission() {
+            return (PermissionSubject subject, String permission) -> false;
         }
 
         @Override

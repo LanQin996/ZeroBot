@@ -61,6 +61,15 @@ public class NapCatClient implements Closeable {
                 .thenAccept(ws -> this.webSocket = ws);
     }
 
+    public void start() {
+        connect().exceptionally(error -> {
+            log.warn("NapCat WebSocket 连接失败：{}。请检查 napcat.wsUrl，并确认 NapCat 已开启 OneBot 11 正向 WebSocket。",
+                    rootMessage(error));
+            scheduleReconnect();
+            return null;
+        });
+    }
+
     public CompletableFuture<ActionResponse<JsonNode>> callAction(String action, Map<String, Object> params) {
         Objects.requireNonNull(action, "action");
         WebSocket ws = webSocket;
@@ -125,10 +134,19 @@ public class NapCatClient implements Closeable {
             return;
         }
         scheduler.schedule(() -> connect().exceptionally(error -> {
-            log.warn("NapCat reconnect failed", error);
+            log.warn("NapCat WebSocket 重连失败：{}", rootMessage(error));
             scheduleReconnect();
             return null;
         }), config.getReconnectIntervalMs(), TimeUnit.MILLISECONDS);
+    }
+
+    private static String rootMessage(Throwable error) {
+        Throwable current = error;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank() ? current.getClass().getSimpleName() : message;
     }
 
     private final class Listener implements WebSocket.Listener {

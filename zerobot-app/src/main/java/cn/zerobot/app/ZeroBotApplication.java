@@ -39,10 +39,7 @@ public class ZeroBotApplication {
         log.info("ZeroBot home: {}", baseDir);
         log.info("Plugin directory: {}", pluginsDir);
         pluginManager.loadAllFromDirectory();
-        client.connect().exceptionally(error -> {
-            log.warn("Initial NapCat connection failed; reconnect loop will continue after the first connection attempt", error);
-            return null;
-        });
+        client.start();
         console.start();
         console.awaitStop();
 

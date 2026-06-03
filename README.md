@@ -30,12 +30,10 @@ ZeroBot 是一个围绕插件运行时设计的 QQ 机器人框架。
 
 ## 生态
 
-```text
-ZeroBot                  框架本体
-ZeroBot Plugin API       插件开发 API
-ZeroBotPluginTemplate    独立插件脚手架
-ZeroBot Plugins          官方或第三方插件
-```
+- ZeroBot：框架本体
+- ZeroBot Plugin API：插件开发 API
+- [ZeroBotPluginTemplate](https://github.com/LanQin996/ZeroBotPluginTemplate)：独立插件脚手架
+- ZeroBot Plugins：官方或第三方插件
 
 插件开发者只需要依赖：
 

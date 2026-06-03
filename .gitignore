@@ -1,0 +1,48 @@
+# Gradle build outputs
+.gradle/
+build/
+**/build/
+out/
+
+# Java artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Keep Gradle Wrapper tracked
+!gradle/wrapper/gradle-wrapper.jar
+
+# Runtime files
+logs/
+*.log
+*.pid
+*.tmp
+*.temp
+
+# ZeroBot local runtime plugin jars
+plugins/*
+!plugins/.keep
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment files
+.env
+.env.*
+!.env.example

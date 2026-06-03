@@ -1,0 +1,6 @@
+napcat:
+  wsUrl: "ws://127.0.0.1:3001/"
+  accessToken: ""
+  actionTimeoutMs: 10000
+  reconnectIntervalMs: 3000
+pluginsDir: "plugins"

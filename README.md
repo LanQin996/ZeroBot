@@ -53,6 +53,13 @@ pluginsDir: "plugins"
 .\gradlew.bat :zerobot-app:run
 ```
 
+如果服务器面板只支持启动 JAR，使用根项目生成的可执行框架 JAR：
+
+```powershell
+.\gradlew.bat jar
+java -jar build\libs\ZeroBot-0.1.0.jar
+```
+
 发行包里运行：
 
 ```powershell

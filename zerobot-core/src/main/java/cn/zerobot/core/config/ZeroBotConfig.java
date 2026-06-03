@@ -1,6 +1,7 @@
 package cn.zerobot.core.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.IOException;
@@ -12,13 +13,20 @@ public class ZeroBotConfig {
     private String pluginsDir = "plugins";
 
     public static ZeroBotConfig load(Path path) throws IOException {
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        ObjectMapper mapper = yamlMapper();
         if (Files.notExists(path)) {
             ZeroBotConfig config = new ZeroBotConfig();
             mapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), config);
             return config;
         }
         return mapper.readValue(path.toFile(), ZeroBotConfig.class);
+    }
+
+    private static ObjectMapper yamlMapper() {
+        YAMLFactory factory = YAMLFactory.builder()
+                .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+                .build();
+        return new ObjectMapper(factory);
     }
 
     public NapCatConfig getNapcat() {

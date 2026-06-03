@@ -49,7 +49,6 @@ cn.zerobot:zerobot-plugin-api:0.1.0
 zerobot-plugin-api   对外插件 API
 zerobot-core         框架核心实现
 zerobot-app          启动器与发行包
-examples             示例插件
 ```
 
 ## 状态

@@ -23,12 +23,20 @@ public class PluginManager {
     private static final Logger log = LoggerFactory.getLogger(PluginManager.class);
 
     private final Path pluginsDir;
+    private final Path configRoot;
+    private final Path dataRoot;
     private final BotContext context;
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final Map<String, PluginHandle> plugins = new ConcurrentHashMap<>();
 
     public PluginManager(Path pluginsDir, BotContext context) {
+        this(pluginsDir, pluginsDir.toAbsolutePath().normalize().getParent(), context);
+    }
+
+    public PluginManager(Path pluginsDir, Path baseDir, BotContext context) {
         this.pluginsDir = pluginsDir;
+        this.configRoot = baseDir.resolve("config").toAbsolutePath().normalize();
+        this.dataRoot = baseDir.resolve("data").toAbsolutePath().normalize();
         this.context = context;
     }
 
@@ -71,7 +79,7 @@ public class PluginManager {
             }
 
             handle = new PluginHandle(descriptor, absoluteJar, classLoader, plugin);
-            plugin.onLoad(new PluginScopedBotContext(context, handle));
+            plugin.onLoad(new PluginScopedBotContext(context, handle, configRoot, dataRoot));
             plugins.put(descriptor.getId(), handle);
             log.info("Loaded plugin {} {} from {}", descriptor.getId(), descriptor.getVersion(), absoluteJar);
             return handle;

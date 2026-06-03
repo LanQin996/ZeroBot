@@ -26,7 +26,7 @@ public class ZeroBotApplication {
         DefaultEventBus eventBus = new DefaultEventBus();
         NapCatClient client = new NapCatClient(config.getNapcat(), eventBus, mapper);
         DefaultBotContext context = new DefaultBotContext(log, client, eventBus);
-        PluginManager pluginManager = new PluginManager(pluginsDir, context);
+        PluginManager pluginManager = new PluginManager(pluginsDir, baseDir, context);
         CommandConsole console = new CommandConsole(pluginManager);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

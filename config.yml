@@ -5,4 +5,3 @@ napcat:
   reconnectIntervalMs: 5000
   reconnectFailuresBeforeCooldown: 5
   reconnectCooldownMs: 60000
-pluginsDir: "plugins"

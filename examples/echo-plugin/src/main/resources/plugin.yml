@@ -1,4 +1,0 @@
-id: echo
-name: Echo Plugin
-version: 0.1.0
-main: cn.zerobot.examples.echo.EchoPlugin

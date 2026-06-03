@@ -20,4 +20,17 @@ class ZeroBotConfigTest {
 
         assertThat(Files.readString(config)).doesNotStartWith("---");
     }
+
+    @Test
+    void missingPluginsDirUsesDefaultPluginsDirectory() throws Exception {
+        Path config = tempDir.resolve("config.yml");
+        Files.writeString(config, """
+                napcat:
+                  wsUrl: "ws://127.0.0.1:3001/"
+                """);
+
+        ZeroBotConfig loaded = ZeroBotConfig.load(config);
+
+        assertThat(loaded.getPluginsDir()).isEqualTo("plugins");
+    }
 }

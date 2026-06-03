@@ -23,10 +23,6 @@ logs/
 *.tmp
 *.temp
 
-# ZeroBot local runtime plugin jars
-plugins/*
-!plugins/.keep
-
 # IDEs
 .idea/
 *.iml

@@ -17,6 +17,8 @@ import cn.zerobot.api.event.RequestListener;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -64,6 +66,35 @@ public interface BotContext {
      * 群消息会回复到原群，私聊消息会回复给原发送者。
      */
     CompletableFuture<ActionResponse<JsonNode>> reply(MessageEvent event, Object message);
+
+    /**
+     * 当前插件的配置目录。
+     * <p>
+     * 默认位置是 {@code config/<插件ID>/}。插件可以把 YAML、JSON 等用户可编辑配置放在这里。
+     */
+    Path configDir();
+
+    /**
+     * 当前插件的数据目录。
+     * <p>
+     * 默认位置是 {@code data/<插件ID>/}。插件可以把缓存、数据库、运行时数据放在这里。
+     */
+    Path dataDir();
+
+    /**
+     * 读取插件 YAML 配置。
+     * <p>
+     * 如果文件不存在，ZeroBot 会使用 {@code configType} 的无参构造创建默认配置并写入文件。
+     * 文件路径相对于 {@link #configDir()}。
+     */
+    <T> T loadConfig(String fileName, Class<T> configType) throws IOException;
+
+    /**
+     * 保存插件 YAML 配置。
+     * <p>
+     * 文件路径相对于 {@link #configDir()}。
+     */
+    void saveConfig(String fileName, Object config) throws IOException;
 
     /**
      * 监听 NapCat 推送的所有 OneBot 事件。

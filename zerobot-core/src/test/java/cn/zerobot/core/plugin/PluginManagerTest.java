@@ -6,11 +6,14 @@ import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -32,7 +35,7 @@ class PluginManagerTest {
     void loadsRejectsDuplicateAndUnloadsPlugin() throws Exception {
         Path jar = createPluginJar();
         FakeContext context = new FakeContext();
-        PluginManager manager = new PluginManager(tempDir.resolve("plugins"), context);
+        PluginManager manager = new PluginManager(tempDir.resolve("plugins"), tempDir, context);
 
         PluginHandle handle = manager.load(jar);
 
@@ -43,6 +46,20 @@ class PluginManagerTest {
         manager.unload("test");
 
         assertThat(context.listeners).isEmpty();
+    }
+
+    @Test
+    void pluginCanLoadDefaultConfig() throws Exception {
+        Path jar = createConfigPluginJar();
+        FakeContext context = new FakeContext();
+        PluginManager manager = new PluginManager(tempDir.resolve("plugins"), tempDir, context);
+
+        manager.load(jar);
+
+        JsonNode node = new ObjectMapper(new YAMLFactory())
+                .readTree(tempDir.resolve("config/config-test/config.yml").toFile());
+        assertThat(node.get("hello").asText()).isEqualTo("world");
+        manager.unload("config-test");
     }
 
     private Path createPluginJar() throws Exception {
@@ -89,6 +106,63 @@ class PluginManagerTest {
         return jar;
     }
 
+    private Path createConfigPluginJar() throws Exception {
+        String source = """
+                package testplugin;
+
+                import cn.zerobot.api.BotContext;
+                import cn.zerobot.api.BotPlugin;
+
+                public class ConfigPlugin implements BotPlugin {
+                    public void onLoad(BotContext context) throws Exception {
+                        context.loadConfig("config.yml", Settings.class);
+                    }
+
+                    public static class Settings {
+                        private String hello = "world";
+
+                        public String getHello() {
+                            return hello;
+                        }
+
+                        public void setHello(String hello) {
+                            this.hello = hello;
+                        }
+                    }
+                }
+                """;
+        Path sourceDir = tempDir.resolve("src-config/testplugin");
+        Files.createDirectories(sourceDir);
+        Path sourceFile = sourceDir.resolve("ConfigPlugin.java");
+        Files.writeString(sourceFile, source, StandardCharsets.UTF_8);
+        Path classesDir = tempDir.resolve("classes-config");
+        Files.createDirectories(classesDir);
+
+        String classPath = System.getProperty("java.class.path");
+        Process process = new ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", "javac").toString(),
+                "-classpath", classPath,
+                "-d", classesDir.toString(),
+                sourceFile.toString()
+        ).inheritIO().start();
+        assertThat(process.waitFor()).isZero();
+
+        Path jar = tempDir.resolve("config-plugin.jar");
+        try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {
+            addFile(out, classesDir.resolve("testplugin/ConfigPlugin.class"), "testplugin/ConfigPlugin.class");
+            addFile(out, classesDir.resolve("testplugin/ConfigPlugin$Settings.class"), "testplugin/ConfigPlugin$Settings.class");
+            out.putNextEntry(new JarEntry("plugin.yml"));
+            out.write("""
+                    id: config-test
+                    name: Config Test Plugin
+                    version: 1.0.0
+                    main: testplugin.ConfigPlugin
+                    """.getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+        }
+        return jar;
+    }
+
     private void addFile(JarOutputStream out, Path file, String entryName) throws Exception {
         out.putNextEntry(new JarEntry(entryName.replace(File.separatorChar, '/')));
         Files.copy(file, out);
@@ -121,6 +195,26 @@ class PluginManagerTest {
         @Override
         public CompletableFuture<ActionResponse<JsonNode>> reply(MessageEvent event, Object message) {
             return callAction("send_msg", Map.of());
+        }
+
+        @Override
+        public Path configDir() {
+            return Path.of("config");
+        }
+
+        @Override
+        public Path dataDir() {
+            return Path.of("data");
+        }
+
+        @Override
+        public <T> T loadConfig(String fileName, Class<T> configType) throws IOException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void saveConfig(String fileName, Object config) throws IOException {
+            throw new UnsupportedOperationException();
         }
 
         @Override

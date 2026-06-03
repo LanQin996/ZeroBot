@@ -10,6 +10,8 @@ import cn.zerobot.core.napcat.NapCatClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -63,6 +65,26 @@ public class DefaultBotContext implements BotContext {
         params.put("user_id", event.userId());
         params.put("message", message);
         return callAction("send_msg", params);
+    }
+
+    @Override
+    public Path configDir() {
+        throw new UnsupportedOperationException("Root context does not have a plugin config directory");
+    }
+
+    @Override
+    public Path dataDir() {
+        throw new UnsupportedOperationException("Root context does not have a plugin data directory");
+    }
+
+    @Override
+    public <T> T loadConfig(String fileName, Class<T> configType) throws IOException {
+        throw new UnsupportedOperationException("Root context cannot load plugin config");
+    }
+
+    @Override
+    public void saveConfig(String fileName, Object config) throws IOException {
+        throw new UnsupportedOperationException("Root context cannot save plugin config");
     }
 
     @Override

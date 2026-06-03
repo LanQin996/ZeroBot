@@ -11,6 +11,16 @@ application {
     mainClass.set("cn.zerobot.app.ZeroBotApplication")
 }
 
+val prepareDistributionPluginsDir by tasks.registering {
+    val keepFile = layout.buildDirectory.file("distribution/plugins/.keep")
+    outputs.file(keepFile)
+    doLast {
+        val file = keepFile.get().asFile
+        file.parentFile.mkdirs()
+        file.writeText("")
+    }
+}
+
 distributions {
     main {
         contents {
@@ -18,7 +28,7 @@ distributions {
                 into("")
             }
             into("plugins") {
-                from(rootProject.file("plugins/.keep"))
+                from(prepareDistributionPluginsDir.map { it.outputs.files.singleFile })
             }
             from(rootProject.file("start.bat")) {
                 into("")

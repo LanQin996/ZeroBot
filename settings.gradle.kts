@@ -20,4 +20,3 @@ rootProject.name = "ZeroBot"
 include("zerobot-plugin-api")
 include("zerobot-core")
 include("zerobot-app")
-include("examples:echo-plugin")

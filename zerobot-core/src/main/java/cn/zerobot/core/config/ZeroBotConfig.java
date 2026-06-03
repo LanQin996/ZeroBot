@@ -49,7 +49,9 @@ public class ZeroBotConfig {
         private String wsUrl = "ws://127.0.0.1:3001/";
         private String accessToken = "";
         private long actionTimeoutMs = 10_000;
-        private long reconnectIntervalMs = 3_000;
+        private long reconnectIntervalMs = 5_000;
+        private int reconnectFailuresBeforeCooldown = 5;
+        private long reconnectCooldownMs = 60_000;
 
         public String getWsUrl() {
             return wsUrl;
@@ -81,6 +83,22 @@ public class ZeroBotConfig {
 
         public void setReconnectIntervalMs(long reconnectIntervalMs) {
             this.reconnectIntervalMs = reconnectIntervalMs;
+        }
+
+        public int getReconnectFailuresBeforeCooldown() {
+            return reconnectFailuresBeforeCooldown;
+        }
+
+        public void setReconnectFailuresBeforeCooldown(int reconnectFailuresBeforeCooldown) {
+            this.reconnectFailuresBeforeCooldown = reconnectFailuresBeforeCooldown;
+        }
+
+        public long getReconnectCooldownMs() {
+            return reconnectCooldownMs;
+        }
+
+        public void setReconnectCooldownMs(long reconnectCooldownMs) {
+            this.reconnectCooldownMs = reconnectCooldownMs;
         }
     }
 }

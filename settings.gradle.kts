@@ -9,7 +9,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         maven {
-            url = uri("https://nexus.jsdu.cn/releases")
+            url = uri("https://nexus.jsdu.cn/repository")
         }
         mavenCentral()
     }

@@ -1,151 +1,74 @@
+<div align="center">
+
 # ZeroBot
 
-ZeroBot 是一个 Java 21 机器人框架，用来对接 NapCat / OneBot 11。使用方式类似一个轻量控制台框架：启动框架本体，连接 NapCat，把插件 JAR 放进 `plugins/`。
+面向 NapCat / OneBot 11 的轻量 Java 机器人框架
 
-## 构建
+[![Java](https://img.shields.io/badge/Java-21+-orange.svg)](https://openjdk.org/)
+[![Gradle](https://img.shields.io/badge/Gradle-8.10+-02303A.svg)](https://gradle.org/)
+[![OneBot](https://img.shields.io/badge/OneBot-11-blue.svg)](https://github.com/botuniverse/onebot-11)
+[![NapCat](https://img.shields.io/badge/NapCat-WebSocket-2ea44f.svg)](https://github.com/NapNeko/NapCatQQ)
 
-```powershell
-.\gradlew.bat build
-```
+**连接 NapCat，加载插件，把机器人能力交给 Java 生态。**
 
-可直接运行的框架 JAR：
+</div>
 
-```text
-build\libs\ZeroBot-0.1.0.jar
-```
+## 概览
 
-应用发行包：
+ZeroBot 是一个围绕插件运行时设计的 QQ 机器人框架。
 
-```text
-zerobot-app\build\distributions\zerobot-app-0.1.0.zip
-```
+框架本体负责连接 NapCat、接收 OneBot 事件、分发类型化事件、调用 OneBot 动作、管理插件生命周期。业务逻辑由插件提供，插件可以独立开发、独立构建、独立分发。
 
-## 配置
+## 特性
 
-`config.yml`：
+- NapCat / OneBot 11 正向 WebSocket 接入
+- 插件 JAR 加载、卸载、重载
+- 群消息、私聊消息、通知、请求、元事件的类型化封装
+- 保留原始 OneBot JSON，兼容 NapCat 扩展字段
+- 插件 API 可发布到 Maven 仓库
+- 插件脚手架可独立维护和分发
 
-```yml
-napcat:
-  wsUrl: "ws://127.0.0.1:3001/"
-  accessToken: ""
-  actionTimeoutMs: 10000
-  reconnectIntervalMs: 5000
-  reconnectFailuresBeforeCooldown: 5
-  reconnectCooldownMs: 60000
-pluginsDir: "plugins"
-```
-
-请确保 NapCat 已开启 OneBot 11 正向 WebSocket，并且地址与 `napcat.wsUrl` 一致。
-
-## 启动
-
-在运行目录执行：
-
-```powershell
-java -jar ZeroBot-0.1.0.jar
-```
-
-Windows `cmd` 中建议使用启动脚本，它会自动切换 UTF-8：
-
-```cmd
-start.bat
-```
-
-如果仍想手动启动，先执行：
-
-```cmd
-chcp 65001
-```
-
-再运行：
-
-```cmd
-java -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -jar ZeroBot-0.1.0.jar
-```
-
-也可以使用 Windows Terminal 或 PowerShell 7。
-
-开发目录中也可以直接运行：
-
-```powershell
-.\gradlew.bat :zerobot-app:run
-```
-
-ZeroBot 会把当前工作目录作为框架根目录，读取这里的 `config.yml`，并自动加载 `plugins/` 目录下的插件 JAR。
-
-## 控制台命令
-
-推荐命令：
+## 生态
 
 ```text
-help
-plugin list
-plugin load <jar>
-plugin unload <id>
-plugin reload <id>
-plugin reload-all
-stop
+ZeroBot                  框架本体
+ZeroBot Plugin API       插件开发 API
+ZeroBotPluginTemplate    独立插件脚手架
+ZeroBot Plugins          官方或第三方插件
 ```
 
-## 示例插件
-
-构建示例插件：
-
-```powershell
-.\gradlew.bat :examples:echo-plugin:jar
-```
-
-插件 JAR：
+插件开发者只需要依赖：
 
 ```text
-examples\echo-plugin\build\libs\zerobot-echo-plugin-0.1.0.jar
+cn.zerobot:zerobot-plugin-api:0.1.0
 ```
 
-加载插件：
+## 模块
 
 ```text
-plugin load examples\echo-plugin\build\libs\zerobot-echo-plugin-0.1.0.jar
+zerobot-plugin-api   对外插件 API
+zerobot-core         框架核心实现
+zerobot-app          启动器与发行包
+examples             示例插件
 ```
 
-然后在 QQ 里发送：
+## 状态
 
-```text
-/echo hello
-```
+ZeroBot 仍处于早期开发阶段，API 会围绕真实插件开发体验持续调整。
 
-机器人会回复：
+当前重点：
 
-```text
-hello
-```
+- 打磨插件 API
+- 完善事件封装
+- 整理插件脚手架
+- 改进发行包和文档
 
-## 开发插件
+## 要求
 
-插件主类实现 `BotPlugin`：
+- Java 21+
+- NapCat OneBot 11 正向 WebSocket
 
-```java
-public class MyPlugin implements BotPlugin {
-    @Override
-    public void onLoad(BotContext context) {
-        context.onMessage(event -> {
-            // 处理 OneBot 消息事件。
-        });
-    }
+## 声明
 
-    @Override
-    public void onUnload() {
-        // 释放插件资源。
-    }
-}
-```
-
-每个插件 JAR 根目录必须包含 `plugin.yml`：
-
-```yml
-id: my-plugin
-name: My Plugin
-version: 1.0.0
-main: your.package.MyPlugin
-```
-
-可以用 `examples/echo-plugin` 作为第一个插件模板。
+ZeroBot 是插件化机器人框架，不包含 QQ 客户端能力，也不绕过平台限制。
+请在遵守相关平台规则、NapCat 使用规则和法律法规的前提下使用。

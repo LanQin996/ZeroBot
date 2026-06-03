@@ -1,6 +1,10 @@
 package cn.zerobot.core.event;
 
+import cn.zerobot.api.event.GroupMessageEvent;
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.event.NoticeEvent;
+import cn.zerobot.api.event.PrivateMessageEvent;
+import cn.zerobot.api.event.RequestEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +40,63 @@ class DefaultEventBusTest {
 
         assertThat(allEvents).hasValue(1);
         assertThat(messages).hasValue(1);
+    }
+
+    @Test
+    void createsTypedMessageEvents() throws Exception {
+        DefaultEventBus bus = new DefaultEventBus();
+        AtomicInteger groupMessages = new AtomicInteger();
+        AtomicInteger privateMessages = new AtomicInteger();
+
+        bus.onMessage(event -> {
+            if (event instanceof GroupMessageEvent groupMessage) {
+                assertThat(groupMessage.groupId()).isEqualTo("10001");
+                groupMessages.incrementAndGet();
+            }
+            if (event instanceof PrivateMessageEvent privateMessage) {
+                assertThat(privateMessage.userId()).isEqualTo("20002");
+                privateMessages.incrementAndGet();
+            }
+        });
+
+        bus.publish(mapper.readTree("""
+                {"post_type":"message","message_type":"group","group_id":10001,"user_id":20002,"raw_message":"hello","message":"hello"}
+                """));
+        bus.publish(mapper.readTree("""
+                {"post_type":"message","message_type":"private","user_id":20002,"raw_message":"hello","message":"hello"}
+                """));
+
+        assertThat(groupMessages).hasValue(1);
+        assertThat(privateMessages).hasValue(1);
+    }
+
+    @Test
+    void createsTypedNoticeAndRequestEvents() throws Exception {
+        DefaultEventBus bus = new DefaultEventBus();
+        AtomicInteger notices = new AtomicInteger();
+        AtomicInteger requests = new AtomicInteger();
+
+        bus.onEvent(event -> {
+            if (event instanceof NoticeEvent notice) {
+                assertThat(notice.noticeType()).isEqualTo("group_recall");
+                notices.incrementAndGet();
+            }
+            if (event instanceof RequestEvent request) {
+                assertThat(request.requestType()).isEqualTo("friend");
+                assertThat(request.flag()).isEqualTo("flag-1");
+                requests.incrementAndGet();
+            }
+        });
+
+        bus.publish(mapper.readTree("""
+                {"post_type":"notice","notice_type":"group_recall","group_id":10001,"user_id":20002}
+                """));
+        bus.publish(mapper.readTree("""
+                {"post_type":"request","request_type":"friend","user_id":20002,"flag":"flag-1","comment":"hi"}
+                """));
+
+        assertThat(notices).hasValue(1);
+        assertThat(requests).hasValue(1);
     }
 
     @Test

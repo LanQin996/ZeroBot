@@ -2,8 +2,13 @@ package cn.zerobot.core.event;
 
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
+import cn.zerobot.api.event.GroupMessageEvent;
+import cn.zerobot.api.event.MetaEvent;
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.event.NoticeEvent;
 import cn.zerobot.api.event.OneBotEvent;
+import cn.zerobot.api.event.PrivateMessageEvent;
+import cn.zerobot.api.event.RequestEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,13 +33,35 @@ public class DefaultEventBus {
     }
 
     public void publish(JsonNode raw) {
-        OneBotEvent event = "message".equals(text(raw, "post_type"))
-                ? new MessageEvent(raw)
-                : new OneBotEvent(raw);
+        OneBotEvent event = createEvent(raw);
         notify(eventListeners, event);
         if (event instanceof MessageEvent) {
             notify(messageListeners, event);
         }
+    }
+
+    private OneBotEvent createEvent(JsonNode raw) {
+        String postType = text(raw, "post_type");
+        if ("message".equals(postType)) {
+            String messageType = text(raw, "message_type");
+            if ("group".equals(messageType)) {
+                return new GroupMessageEvent(raw);
+            }
+            if ("private".equals(messageType)) {
+                return new PrivateMessageEvent(raw);
+            }
+            return new MessageEvent(raw);
+        }
+        if ("notice".equals(postType)) {
+            return new NoticeEvent(raw);
+        }
+        if ("request".equals(postType)) {
+            return new RequestEvent(raw);
+        }
+        if ("meta_event".equals(postType)) {
+            return new MetaEvent(raw);
+        }
+        return new OneBotEvent(raw);
     }
 
     private void notify(List<EventListener> listeners, OneBotEvent event) {

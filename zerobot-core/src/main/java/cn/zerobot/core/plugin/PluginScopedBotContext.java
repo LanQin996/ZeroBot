@@ -68,6 +68,13 @@ class PluginScopedBotContext implements BotContext {
     }
 
     @Override
+    public EventSubscription registerPermissionService(PermissionService permissionService) {
+        EventSubscription subscription = delegate.registerPermissionService(permissionService);
+        handle.subscriptions().add(subscription);
+        return subscription;
+    }
+
+    @Override
     public Path configDir() {
         return configDir;
     }

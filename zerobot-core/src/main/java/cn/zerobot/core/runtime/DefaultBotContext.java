@@ -6,6 +6,7 @@ import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
 import cn.zerobot.api.permission.PermissionService;
+import cn.zerobot.core.permission.DelegatingPermissionService;
 import cn.zerobot.core.event.DefaultEventBus;
 import cn.zerobot.core.napcat.NapCatClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,13 +22,15 @@ public class DefaultBotContext implements BotContext {
     private final Logger logger;
     private final NapCatClient client;
     private final DefaultEventBus eventBus;
-    private final PermissionService permissionService;
+    private final DelegatingPermissionService permissionService;
 
     public DefaultBotContext(Logger logger, NapCatClient client, DefaultEventBus eventBus, PermissionService permissionService) {
         this.logger = logger;
         this.client = client;
         this.eventBus = eventBus;
-        this.permissionService = permissionService;
+        this.permissionService = permissionService instanceof DelegatingPermissionService delegating
+                ? delegating
+                : new DelegatingPermissionService(permissionService);
     }
 
     @Override
@@ -72,7 +75,12 @@ public class DefaultBotContext implements BotContext {
 
     @Override
     public PermissionService permission() {
-        return permissionService;
+        return permissionService.active();
+    }
+
+    @Override
+    public EventSubscription registerPermissionService(PermissionService permissionService) {
+        return this.permissionService.register(permissionService);
     }
 
     @Override

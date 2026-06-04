@@ -77,6 +77,15 @@ public interface BotContext {
     PermissionService permission();
 
     /**
+     * 注册插件提供的权限服务。
+     * <p>
+     * 权限管理插件可以用这个入口接管全局权限判断，也可以包装原有服务来保留内置超级管理员能力。
+     */
+    default EventSubscription registerPermissionService(PermissionService permissionService) {
+        throw new UnsupportedOperationException("This ZeroBot runtime does not support permission service registration");
+    }
+
+    /**
      * 判断消息发送者是否拥有指定权限节点。
      */
     default boolean hasPermission(MessageEvent event, String permission) {

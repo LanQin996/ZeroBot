@@ -1,0 +1,56 @@
+package cn.zerobot.core.event;
+
+import cn.zerobot.api.event.MessageEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class MessageEventTest {
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @Test
+    void readsMentionsFromMessageSegments() throws Exception {
+        MessageEvent event = new MessageEvent(mapper.readTree("""
+                {
+                  "post_type": "message",
+                  "message_type": "group",
+                  "raw_message": "@Alice hello",
+                  "message": [
+                    {"type": "at", "data": {"qq": "10001"}},
+                    {"type": "text", "data": {"text": " hello"}},
+                    {"type": "at", "data": {"qq": "all"}}
+                  ]
+                }
+                """));
+
+        assertThat(event.mentionedUserIds()).containsExactly("10001");
+        assertThat(event.firstMentionedUserId()).isEqualTo("10001");
+        assertThat(event.resolveUserId("@Alice")).isEqualTo("10001");
+    }
+
+    @Test
+    void readsMentionsFromCqCodeText() throws Exception {
+        MessageEvent event = new MessageEvent(mapper.readTree("""
+                {
+                  "post_type": "message",
+                  "message_type": "group",
+                  "raw_message": "/lp user [CQ:at,qq=10001] p zerobot.use",
+                  "message": "/lp user [CQ:at,qq=10001] p zerobot.use"
+                }
+                """));
+
+        assertThat(event.mentionedUserIds()).containsExactly("10001");
+        assertThat(event.resolveUserId("[CQ:at,qq=10001]")).isEqualTo("10001");
+    }
+
+    @Test
+    void resolvesPlainNumericUserId() throws Exception {
+        MessageEvent event = new MessageEvent(mapper.readTree("""
+                {"post_type":"message","message_type":"private","raw_message":"/lp user 10001 info","message":"/lp user 10001 info"}
+                """));
+
+        assertThat(event.resolveUserId("10001")).isEqualTo("10001");
+        assertThat(event.resolveUserId("alice")).isNull();
+    }
+}

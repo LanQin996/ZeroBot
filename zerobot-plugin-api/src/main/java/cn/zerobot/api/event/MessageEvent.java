@@ -2,12 +2,20 @@ package cn.zerobot.api.event;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * OneBot 消息事件。
  * <p>
  * 如果只关心群消息或私聊消息，优先使用 {@link GroupMessageEvent} 和 {@link PrivateMessageEvent}。
  */
 public class MessageEvent extends OneBotEvent {
+    private static final Pattern CQ_AT_PATTERN = Pattern.compile("\\[CQ:at,[^\\]]*qq=([^,\\]]+)");
+
     public MessageEvent(JsonNode raw) {
         super(raw);
     }
@@ -49,5 +57,113 @@ public class MessageEvent extends OneBotEvent {
      */
     public JsonNode message() {
         return raw().get("message");
+    }
+
+    /**
+     * 消息中 @ 的 QQ 号列表。
+     * <p>
+     * 同时兼容 OneBot 消息段数组和 CQ 码字符串。{@code @全体成员} 会被忽略。
+     */
+    public List<String> mentionedUserIds() {
+        Set<String> userIds = new LinkedHashSet<>();
+        JsonNode message = message();
+        if (message != null) {
+            if (message.isArray()) {
+                for (JsonNode segment : message) {
+                    if (!"at".equals(segment.path("type").asText())) {
+                        continue;
+                    }
+                    JsonNode data = segment.path("data");
+                    addMention(userIds, data.path("qq").asText(null));
+                    addMention(userIds, data.path("user_id").asText(null));
+                }
+            } else if (message.isTextual()) {
+                collectCqMentions(userIds, message.asText());
+            }
+        }
+        collectCqMentions(userIds, rawMessage());
+        return List.copyOf(userIds);
+    }
+
+    /**
+     * 消息中的第一个 @ 用户 QQ 号；没有时返回 {@code null}。
+     */
+    public String firstMentionedUserId() {
+        return mentionedUserId(0);
+    }
+
+    /**
+     * 按顺序读取消息中的第 {@code index} 个 @ 用户 QQ 号；不存在时返回 {@code null}。
+     */
+    public String mentionedUserId(int index) {
+        List<String> userIds = mentionedUserIds();
+        return index < 0 || index >= userIds.size() ? null : userIds.get(index);
+    }
+
+    /**
+     * 将命令参数中的用户引用解析为 QQ 号。
+     * <p>
+     * 支持纯 QQ 号、{@code @123456}、CQ 码 {@code [CQ:at,qq=123456]}，以及消息段格式下的昵称 @。
+     */
+    public String resolveUserId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        Matcher matcher = CQ_AT_PATTERN.matcher(normalized);
+        if (matcher.find()) {
+            return normalizeMention(matcher.group(1));
+        }
+
+        if (normalized.startsWith("@")) {
+            String withoutAt = normalized.substring(1).trim();
+            if (isNumericUserId(withoutAt)) {
+                return withoutAt;
+            }
+            return firstMentionedUserId();
+        }
+
+        return isNumericUserId(normalized) ? normalized : null;
+    }
+
+    private void collectCqMentions(Set<String> userIds, String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        Matcher matcher = CQ_AT_PATTERN.matcher(text);
+        while (matcher.find()) {
+            addMention(userIds, matcher.group(1));
+        }
+    }
+
+    private void addMention(Set<String> userIds, String value) {
+        String normalized = normalizeMention(value);
+        if (normalized != null) {
+            userIds.add(normalized);
+        }
+    }
+
+    private String normalizeMention(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return isNumericUserId(normalized) ? normalized : null;
+    }
+
+    private boolean isNumericUserId(String value) {
+        if (value == null || value.isBlank() || "all".equalsIgnoreCase(value.trim())) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }

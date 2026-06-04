@@ -20,10 +20,48 @@ public class ZeroBotConfig {
         ObjectMapper mapper = yamlMapper();
         if (Files.notExists(path)) {
             ZeroBotConfig config = new ZeroBotConfig();
-            mapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), config);
+            Files.writeString(path, defaultConfigTemplate());
             return config;
         }
         return mapper.readValue(path.toFile(), ZeroBotConfig.class);
+    }
+
+    private static String defaultConfigTemplate() {
+        return """
+                # NapCat / OneBot 11 正向 WebSocket 配置。
+                napcat:
+                  # NapCat 正向 WebSocket 地址。
+                  wsUrl: "ws://127.0.0.1:3001/"
+                  # NapCat access_token；没有设置就留空。
+                  accessToken: ""
+                  # OneBot 动作调用超时时间，单位毫秒。
+                  actionTimeoutMs: 10000
+                  # WebSocket 断开后的普通重连间隔，单位毫秒。
+                  reconnectIntervalMs: 5000
+                  # 连续失败多少次后进入较长冷却。
+                  reconnectFailuresBeforeCooldown: 5
+                  # 重连冷却时间，单位毫秒。
+                  reconnectCooldownMs: 60000
+                  # 超过多久没有收到 NapCat 心跳后告警；设为 0 可关闭。
+                  heartbeatTimeoutMs: 45000
+                  # 心跳超时检查间隔；设为 0 可关闭。
+                  heartbeatCheckIntervalMs: 5000
+                  # 主动调用 get_status 的间隔；设为 0 可关闭。
+                  activeHeartbeatIntervalMs: 15000
+
+                # 框架统一回复行为，影响 bot.reply(...) 和 command.reply(...)。
+                reply:
+                  # 是否引用触发回复的原消息。
+                  quoteMessage: false
+                  # 群聊回复时是否自动 @ 触发者；私聊不会 @。
+                  mentionUser: false
+
+                # 插件目录。相对路径会基于 ZeroBot 所在目录。
+                pluginsDir: "plugins"
+
+                # 超级管理员 QQ 号列表，拥有内置权限服务的全部权限。
+                superAdmins: []
+                """;
     }
 
     private static ObjectMapper yamlMapper() {

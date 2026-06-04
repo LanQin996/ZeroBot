@@ -1,6 +1,7 @@
 package cn.zerobot.core.event;
 
 import cn.zerobot.api.event.MessageEvent;
+import cn.zerobot.api.permission.PermissionSubject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -52,5 +53,31 @@ class MessageEventTest {
 
         assertThat(event.resolveUserId("10001")).isEqualTo("10001");
         assertThat(event.resolveUserId("alice")).isNull();
+    }
+
+    @Test
+    void createsPermissionContextsFromMessageEvent() throws Exception {
+        MessageEvent event = new MessageEvent(mapper.readTree("""
+                {
+                  "post_type": "message",
+                  "message_type": "group",
+                  "user_id": 10001,
+                  "group_id": 20001,
+                  "raw_message": "hello",
+                  "message": "hello",
+                  "sender": {
+                    "role": "admin"
+                  }
+                }
+                """));
+
+        PermissionSubject subject = PermissionSubject.from(event);
+
+        assertThat(subject.contexts()).containsEntry("type", "group");
+        assertThat(subject.contexts()).containsEntry("message_type", "group");
+        assertThat(subject.contexts()).containsEntry("contact", "user");
+        assertThat(subject.contexts()).containsEntry("group", "20001");
+        assertThat(subject.contexts()).containsEntry("level", "administrator");
+        assertThat(subject.contexts()).containsEntry("admin", "true");
     }
 }

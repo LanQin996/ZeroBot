@@ -2,8 +2,11 @@ package cn.zerobot.api.event;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,6 +60,33 @@ public class MessageEvent extends OneBotEvent {
      */
     public JsonNode message() {
         return raw().get("message");
+    }
+
+    /**
+     * 权限判断上下文。
+     * <p>
+     * 这些键值会被 {@code PermissionSubject.from(event)} 带入统一权限服务。
+     */
+    public Map<String, String> permissionContexts() {
+        Map<String, String> contexts = new LinkedHashMap<>();
+        String messageType = normalizeContextValue(messageType());
+        if (!messageType.isBlank()) {
+            contexts.put("message_type", messageType);
+            contexts.put("type", messageType);
+        }
+        contexts.put("contact", "user");
+
+        String groupId = groupId();
+        if (groupId != null && !groupId.isBlank()) {
+            contexts.put("group", groupId.trim());
+        }
+
+        String role = senderRole();
+        if (!role.isBlank()) {
+            contexts.put("level", role);
+            contexts.put("admin", String.valueOf("owner".equals(role) || "administrator".equals(role)));
+        }
+        return Map.copyOf(contexts);
     }
 
     /**
@@ -128,6 +158,15 @@ public class MessageEvent extends OneBotEvent {
         }
 
         return isNumericUserId(normalized) ? normalized : null;
+    }
+
+    private String senderRole() {
+        String role = normalizeContextValue(raw().path("sender").path("role").asText(null));
+        return "admin".equals(role) ? "administrator" : role;
+    }
+
+    private String normalizeContextValue(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private void collectCqMentions(Set<String> userIds, String text) {

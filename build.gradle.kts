@@ -2,6 +2,8 @@ plugins {
     java
 }
 
+import org.gradle.api.tasks.bundling.Zip
+
 allprojects {
     group = "cn.zerobot"
     version = "0.1.4"
@@ -52,4 +54,26 @@ tasks.jar {
             .filter { it.exists() }
             .map { if (it.isDirectory) it else zipTree(it) }
     })
+}
+
+tasks.register<Zip>("releaseZip") {
+    group = "distribution"
+    description = "Builds a runnable ZeroBot release zip with scripts and default config."
+    dependsOn(tasks.jar)
+
+    archiveBaseName.set("ZeroBot")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+
+    val releaseDir = "ZeroBot-${project.version}"
+    into(releaseDir) {
+        from(tasks.jar.flatMap { it.archiveFile }) {
+            rename { "ZeroBot.jar" }
+        }
+        from("config.yml")
+        from("dist/start.bat")
+        from("dist/start.sh")
+        into("plugins") {
+            from("dist/plugins/README.md")
+        }
+    }
 }

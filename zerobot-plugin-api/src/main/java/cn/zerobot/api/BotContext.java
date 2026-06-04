@@ -2,6 +2,8 @@ package cn.zerobot.api;
 
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
+import cn.zerobot.api.event.GroupFileUploadEvent;
+import cn.zerobot.api.event.GroupFileUploadListener;
 import cn.zerobot.api.event.GroupMessageEvent;
 import cn.zerobot.api.event.GroupMessageListener;
 import cn.zerobot.api.event.MetaEvent;
@@ -185,6 +187,24 @@ public interface BotContext {
         return onEvent(event -> {
             if (event instanceof NoticeEvent noticeEvent) {
                 listener.onNotice(noticeEvent);
+            }
+        });
+    }
+
+    /**
+     * 监听群文件上传事件。
+     * <p>
+     * 这是 {@code notice_type=group_upload} 的语义化入口。插件如果要处理群文件上传，
+     * 建议使用这个方法，而不是同时消费群消息里的 {@code type=file} 消息段。
+     */
+    default EventSubscription onGroupFileUpload(GroupFileUploadListener listener) {
+        return onNotice(event -> {
+            if (event instanceof GroupFileUploadEvent uploadEvent) {
+                listener.onGroupFileUpload(uploadEvent);
+                return;
+            }
+            if ("group_upload".equals(event.noticeType())) {
+                listener.onGroupFileUpload(new GroupFileUploadEvent(event.raw()));
             }
         });
     }

@@ -1,6 +1,7 @@
 package cn.zerobot.core.event;
 
 import cn.zerobot.api.event.GroupMessageEvent;
+import cn.zerobot.api.event.GroupFileUploadEvent;
 import cn.zerobot.api.event.MessageEvent;
 import cn.zerobot.api.event.NoticeEvent;
 import cn.zerobot.api.event.PrivateMessageEvent;
@@ -105,12 +106,14 @@ class DefaultEventBusTest {
         AtomicInteger uploads = new AtomicInteger();
 
         bus.onEvent(event -> {
-            if (event instanceof NoticeEvent notice && "group_upload".equals(notice.noticeType())) {
-                assertThat(notice.groupId()).isEqualTo("10001");
-                assertThat(notice.file().id()).isEqualTo("file-1");
-                assertThat(notice.file().name()).isEqualTo("crash.log");
-                assertThat(notice.file().size()).isEqualTo(456L);
-                assertThat(notice.file().busId()).isEqualTo("102");
+            if (event instanceof GroupFileUploadEvent upload) {
+                assertThat(upload).isInstanceOf(NoticeEvent.class);
+                assertThat(upload.noticeType()).isEqualTo("group_upload");
+                assertThat(upload.groupId()).isEqualTo("10001");
+                assertThat(upload.file().id()).isEqualTo("file-1");
+                assertThat(upload.file().name()).isEqualTo("crash.log");
+                assertThat(upload.file().size()).isEqualTo(456L);
+                assertThat(upload.file().busId()).isEqualTo("102");
                 uploads.incrementAndGet();
             }
         });

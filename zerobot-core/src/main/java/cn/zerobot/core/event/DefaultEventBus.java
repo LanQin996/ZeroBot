@@ -2,6 +2,7 @@ package cn.zerobot.core.event;
 
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
+import cn.zerobot.api.event.GroupFileUploadEvent;
 import cn.zerobot.api.event.GroupMessageEvent;
 import cn.zerobot.api.event.MetaEvent;
 import cn.zerobot.api.event.MessageEvent;
@@ -53,6 +54,10 @@ public class DefaultEventBus {
             return new MessageEvent(raw);
         }
         if ("notice".equals(postType)) {
+            String noticeType = text(raw, "notice_type");
+            if ("group_upload".equals(noticeType)) {
+                return new GroupFileUploadEvent(raw);
+            }
             return new NoticeEvent(raw);
         }
         if ("request".equals(postType)) {

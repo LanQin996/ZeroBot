@@ -12,6 +12,7 @@ import java.util.List;
 
 public class ZeroBotConfig {
     private NapCatConfig napcat = new NapCatConfig();
+    private ReplyConfig reply = new ReplyConfig();
     private String pluginsDir = "plugins";
     private List<String> superAdmins = new ArrayList<>();
 
@@ -38,6 +39,14 @@ public class ZeroBotConfig {
 
     public void setNapcat(NapCatConfig napcat) {
         this.napcat = napcat;
+    }
+
+    public ReplyConfig getReply() {
+        return reply;
+    }
+
+    public void setReply(ReplyConfig reply) {
+        this.reply = reply == null ? new ReplyConfig() : reply;
     }
 
     public String getPluginsDir() {
@@ -137,6 +146,27 @@ public class ZeroBotConfig {
 
         public void setActiveHeartbeatIntervalMs(long activeHeartbeatIntervalMs) {
             this.activeHeartbeatIntervalMs = activeHeartbeatIntervalMs;
+        }
+    }
+
+    public static class ReplyConfig {
+        private boolean quoteMessage;
+        private boolean mentionUser;
+
+        public boolean isQuoteMessage() {
+            return quoteMessage;
+        }
+
+        public void setQuoteMessage(boolean quoteMessage) {
+            this.quoteMessage = quoteMessage;
+        }
+
+        public boolean isMentionUser() {
+            return mentionUser;
+        }
+
+        public void setMentionUser(boolean mentionUser) {
+            this.mentionUser = mentionUser;
         }
     }
 }

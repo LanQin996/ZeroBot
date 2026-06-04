@@ -28,7 +28,7 @@ public class ZeroBotApplication {
         DefaultEventBus eventBus = new DefaultEventBus();
         NapCatClient client = new NapCatClient(config.getNapcat(), eventBus, mapper);
         SuperAdminPermissionService permissionService = new SuperAdminPermissionService(config.getSuperAdmins());
-        DefaultBotContext context = new DefaultBotContext(log, client, eventBus, permissionService);
+        DefaultBotContext context = new DefaultBotContext(log, client, eventBus, permissionService, config.getReply());
         CommandDispatcher commandDispatcher = new CommandDispatcher(context);
         context.setCommandDispatcher(commandDispatcher);
         commandDispatcher.start();

@@ -47,6 +47,13 @@ public class MessageEvent extends OneBotEvent {
     }
 
     /**
+     * OneBot 消息 ID。没有提供时返回 0。
+     */
+    public long messageId() {
+        return longValue("message_id");
+    }
+
+    /**
      * OneBot 提供的原始消息文本。
      */
     public String rawMessage() {

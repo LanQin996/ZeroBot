@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class CommandConsole implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(CommandConsole.class);
@@ -115,6 +116,11 @@ public class CommandConsole implements AutoCloseable {
                     log.info("输入 help 查看可用命令。");
                 }
             }
+        } catch (UsageException e) {
+            log.info(e.getMessage());
+            if (e.showPluginIds()) {
+                printAvailablePluginIds();
+            }
         } catch (Exception e) {
             log.warn("命令执行失败：{}", line, e);
         }
@@ -143,7 +149,7 @@ public class CommandConsole implements AutoCloseable {
 
     private String requireArg(String command, String[] args, String placeholder) {
         if (args.length == 0 || args[0].isBlank()) {
-            throw new IllegalArgumentException("Usage: " + command + " " + placeholder);
+            throw new UsageException("用法：" + command + " " + placeholder, "<id>".equals(placeholder));
         }
         return args[0];
     }
@@ -178,6 +184,18 @@ public class CommandConsole implements AutoCloseable {
         for (PluginHandle plugin : plugins) {
             log.info("- {}", formatPlugin(plugin));
         }
+    }
+
+    private void printAvailablePluginIds() {
+        var ids = pluginManager.plugins().stream()
+                .map(plugin -> plugin.descriptor().getId())
+                .sorted()
+                .collect(Collectors.joining(", "));
+        if (ids.isBlank()) {
+            log.info("当前没有可用插件 ID。");
+            return;
+        }
+        log.info("可用插件 ID：{}", ids);
     }
 
     private String formatPlugin(PluginHandle plugin) {
@@ -315,6 +333,19 @@ public class CommandConsole implements AutoCloseable {
                     && (line.words().isEmpty()
                     || line.wordIndex() >= line.words().size()
                     || !line.word().isEmpty());
+        }
+    }
+
+    private static final class UsageException extends RuntimeException {
+        private final boolean showPluginIds;
+
+        private UsageException(String message, boolean showPluginIds) {
+            super(message);
+            this.showPluginIds = showPluginIds;
+        }
+
+        private boolean showPluginIds() {
+            return showPluginIds;
         }
     }
 }

@@ -131,10 +131,29 @@ public interface BotContext {
     /**
      * 读取插件 YAML 配置。
      * <p>
-     * 如果文件不存在，ZeroBot 会使用 {@code configType} 的无参构造创建默认配置并写入文件。
+     * 如果文件不存在，ZeroBot 会优先从插件 jar 中拷贝同名资源；资源不存在时，
+     * 再使用 {@code configType} 的无参构造创建默认配置并写入文件。
      * 文件路径相对于 {@link #configDir()}。
      */
     <T> T loadConfig(String fileName, Class<T> configType) throws IOException;
+
+    /**
+     * 保存插件 jar 中的 {@code config.yml} 到插件配置目录。
+     * <p>
+     * 和 Bukkit/Spigot 的 {@code saveDefaultConfig()} 类似：目标文件已存在时不会覆盖。
+     */
+    default void saveDefaultConfig() throws IOException {
+        saveResource("config.yml", false);
+    }
+
+    /**
+     * 保存插件 jar 中的资源文件到插件配置目录。
+     * <p>
+     * {@code resourcePath} 相对于插件 jar 根目录；目标路径相对于 {@link #configDir()}。
+     */
+    default void saveResource(String resourcePath, boolean replace) throws IOException {
+        throw new UnsupportedOperationException("This ZeroBot runtime does not support plugin resource saving");
+    }
 
     /**
      * 保存插件 YAML 配置。
@@ -243,9 +262,61 @@ public interface BotContext {
     }
 
     /**
+     * 向群发送图片。
+     * <p>
+     * {@code file} 可以是 http/https URL、base64:// 数据、file:// URI，或 OneBot/NapCat 支持的图片标识。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> sendGroupImage(String groupId, String file) {
+        return sendGroupMsg(groupId, List.of(MessageSegment.image(file)));
+    }
+
+    /**
+     * 向群发送本地图片文件。
+     * <p>
+     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> sendGroupImage(String groupId, Path file) {
+        return sendGroupMsg(groupId, List.of(MessageSegment.image(file)));
+    }
+
+    /**
      * 向私聊用户发送纯文本消息。
      */
     default CompletableFuture<ActionResponse<JsonNode>> sendPrivateText(String userId, String text) {
         return sendPrivateMsg(userId, List.of(MessageSegment.text(text)));
+    }
+
+    /**
+     * 向私聊用户发送图片。
+     * <p>
+     * {@code file} 可以是 http/https URL、base64:// 数据、file:// URI，或 OneBot/NapCat 支持的图片标识。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> sendPrivateImage(String userId, String file) {
+        return sendPrivateMsg(userId, List.of(MessageSegment.image(file)));
+    }
+
+    /**
+     * 向私聊用户发送本地图片文件。
+     * <p>
+     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> sendPrivateImage(String userId, Path file) {
+        return sendPrivateMsg(userId, List.of(MessageSegment.image(file)));
+    }
+
+    /**
+     * 回复图片到消息来源。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> replyImage(MessageEvent event, String file) {
+        return reply(event, List.of(MessageSegment.image(file)));
+    }
+
+    /**
+     * 回复本地图片文件到消息来源。
+     * <p>
+     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     */
+    default CompletableFuture<ActionResponse<JsonNode>> replyImage(MessageEvent event, Path file) {
+        return reply(event, List.of(MessageSegment.image(file)));
     }
 }

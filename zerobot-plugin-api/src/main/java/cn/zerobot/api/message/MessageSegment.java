@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,6 +28,14 @@ public record MessageSegment(String type, Map<String, Object> data) {
 
     public static MessageSegment image(String file) {
         return of("image", Map.of("file", file));
+    }
+
+    public static MessageSegment image(Path file) {
+        return image(imageFile(file));
+    }
+
+    public static String imageFile(Path file) {
+        return file.toAbsolutePath().normalize().toUri().toString();
     }
 
     public static MessageSegment reply(long messageId) {

@@ -15,8 +15,10 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -109,11 +111,21 @@ class PluginScopedBotContext implements BotContext {
         Files.createDirectories(configDir);
         Path file = resolveInside(configDir, fileName);
         if (Files.notExists(file)) {
+            if (saveResourceIfExists(fileName, false)) {
+                return yamlMapper.readValue(file.toFile(), configType);
+            }
             T config = createDefaultConfig(configType);
             saveConfig(fileName, config);
             return config;
         }
         return yamlMapper.readValue(file.toFile(), configType);
+    }
+
+    @Override
+    public void saveResource(String resourcePath, boolean replace) throws IOException {
+        if (!saveResourceIfExists(resourcePath, replace)) {
+            throw new IOException("Plugin resource does not exist: " + resourcePath);
+        }
     }
 
     @Override
@@ -139,6 +151,40 @@ class PluginScopedBotContext implements BotContext {
         EventSubscription subscription = delegate.onMessage(listener);
         handle.subscriptions().add(subscription);
         return subscription;
+    }
+
+    private boolean saveResourceIfExists(String resourcePath, boolean replace) throws IOException {
+        String normalizedResource = normalizeResourcePath(resourcePath);
+        try (InputStream input = handle.classLoader().getResourceAsStream(normalizedResource)) {
+            if (input == null) {
+                return false;
+            }
+            Files.createDirectories(configDir);
+            Path file = resolveInside(configDir, normalizedResource);
+            if (Files.exists(file) && !replace) {
+                return true;
+            }
+            Path parent = file.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.copy(input, file, StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        }
+    }
+
+    private String normalizeResourcePath(String resourcePath) {
+        if (resourcePath == null || resourcePath.isBlank()) {
+            throw new IllegalArgumentException("Resource path cannot be blank");
+        }
+        String normalized = resourcePath.replace('\\', '/').trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (normalized.isBlank() || normalized.contains("..")) {
+            throw new IllegalArgumentException("Invalid plugin resource path: " + resourcePath);
+        }
+        return normalized;
     }
 
     private Path resolveInside(Path root, String fileName) {

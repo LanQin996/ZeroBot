@@ -73,6 +73,24 @@ class PluginManagerTest {
         manager.unload("config-test");
     }
 
+    @Test
+    void pluginCanSaveDefaultConfigFromJarResource() throws Exception {
+        Path jar = createResourceConfigPluginJar();
+        FakeContext context = new FakeContext();
+        PluginManager manager = new PluginManager(tempDir.resolve("plugins"), tempDir, context);
+
+        manager.load(jar);
+
+        Path config = tempDir.resolve("config/resource-config/config.yml");
+        assertThat(Files.readString(config, StandardCharsets.UTF_8)).isEqualTo("""
+                # Default config from plugin jar
+                hello: resource
+                """);
+        JsonNode node = new ObjectMapper(new YAMLFactory()).readTree(config.toFile());
+        assertThat(node.get("hello").asText()).isEqualTo("resource");
+        manager.unload("resource-config");
+    }
+
     private Path createPluginJar() throws Exception {
         String source = """
                 package testplugin;
@@ -176,6 +194,70 @@ class PluginManagerTest {
                     name: Config Test Plugin
                     version: 1.0.0
                     main: testplugin.ConfigPlugin
+                    """.getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+        }
+        return jar;
+    }
+
+    private Path createResourceConfigPluginJar() throws Exception {
+        String source = """
+                package testplugin;
+
+                import cn.zerobot.api.BotContext;
+                import cn.zerobot.api.BotPlugin;
+
+                public class ResourceConfigPlugin implements BotPlugin {
+                    public void onLoad(BotContext context) throws Exception {
+                        context.saveDefaultConfig();
+                        context.loadConfig("config.yml", Settings.class);
+                    }
+
+                    public static class Settings {
+                        private String hello = "bean";
+
+                        public String getHello() {
+                            return hello;
+                        }
+
+                        public void setHello(String hello) {
+                            this.hello = hello;
+                        }
+                    }
+                }
+                """;
+        Path sourceDir = tempDir.resolve("src-resource-config/testplugin");
+        Files.createDirectories(sourceDir);
+        Path sourceFile = sourceDir.resolve("ResourceConfigPlugin.java");
+        Files.writeString(sourceFile, source, StandardCharsets.UTF_8);
+        Path classesDir = tempDir.resolve("classes-resource-config");
+        Files.createDirectories(classesDir);
+
+        String classPath = System.getProperty("java.class.path");
+        Process process = new ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", "javac").toString(),
+                "-classpath", classPath,
+                "-d", classesDir.toString(),
+                sourceFile.toString()
+        ).inheritIO().start();
+        assertThat(process.waitFor()).isZero();
+
+        Path jar = tempDir.resolve("resource-config-plugin.jar");
+        try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {
+            addFile(out, classesDir.resolve("testplugin/ResourceConfigPlugin.class"), "testplugin/ResourceConfigPlugin.class");
+            addFile(out, classesDir.resolve("testplugin/ResourceConfigPlugin$Settings.class"), "testplugin/ResourceConfigPlugin$Settings.class");
+            out.putNextEntry(new JarEntry("plugin.yml"));
+            out.write("""
+                    id: resource-config
+                    name: Resource Config Test Plugin
+                    version: 1.0.0
+                    main: testplugin.ResourceConfigPlugin
+                    """.getBytes(StandardCharsets.UTF_8));
+            out.closeEntry();
+            out.putNextEntry(new JarEntry("config.yml"));
+            out.write("""
+                    # Default config from plugin jar
+                    hello: resource
                     """.getBytes(StandardCharsets.UTF_8));
             out.closeEntry();
         }

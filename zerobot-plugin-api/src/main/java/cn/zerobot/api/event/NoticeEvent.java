@@ -36,4 +36,13 @@ public class NoticeEvent extends OneBotEvent {
     public String groupId() {
         return text("group_id");
     }
+
+    /**
+     * 群文件上传通知中的文件信息。
+     * <p>
+     * 仅当 {@code notice_type=group_upload} 且事件包含 {@code file} 对象时有值。
+     */
+    public FileInfo file() {
+        return FileInfo.from(raw().get("file"));
+    }
 }

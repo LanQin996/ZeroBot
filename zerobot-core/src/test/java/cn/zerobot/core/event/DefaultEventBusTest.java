@@ -100,6 +100,40 @@ class DefaultEventBusTest {
     }
 
     @Test
+    void readsGroupUploadNoticeFile() throws Exception {
+        DefaultEventBus bus = new DefaultEventBus();
+        AtomicInteger uploads = new AtomicInteger();
+
+        bus.onEvent(event -> {
+            if (event instanceof NoticeEvent notice && "group_upload".equals(notice.noticeType())) {
+                assertThat(notice.groupId()).isEqualTo("10001");
+                assertThat(notice.file().id()).isEqualTo("file-1");
+                assertThat(notice.file().name()).isEqualTo("crash.log");
+                assertThat(notice.file().size()).isEqualTo(456L);
+                assertThat(notice.file().busId()).isEqualTo("102");
+                uploads.incrementAndGet();
+            }
+        });
+
+        bus.publish(mapper.readTree("""
+                {
+                  "post_type": "notice",
+                  "notice_type": "group_upload",
+                  "group_id": 10001,
+                  "user_id": 20002,
+                  "file": {
+                    "id": "file-1",
+                    "name": "crash.log",
+                    "size": 456,
+                    "busid": 102
+                  }
+                }
+                """));
+
+        assertThat(uploads).hasValue(1);
+    }
+
+    @Test
     void closedSubscriptionsStopReceivingEvents() throws Exception {
         DefaultEventBus bus = new DefaultEventBus();
         AtomicInteger messages = new AtomicInteger();

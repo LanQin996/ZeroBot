@@ -63,6 +63,30 @@ public class MessageEvent extends OneBotEvent {
     }
 
     /**
+     * 消息中的文件消息段。
+     * <p>
+     * 支持 OneBot 消息段数组里的 {@code type=file}。如果适配器把文件字段放在
+     * {@code data} 内部，会返回 {@code data} 里的文件信息；否则返回整个消息段。
+     */
+    public List<FileInfo> files() {
+        Set<FileInfo> files = new LinkedHashSet<>();
+        JsonNode message = message();
+        if (message != null && message.isArray()) {
+            for (JsonNode segment : message) {
+                if (!"file".equals(segment.path("type").asText())) {
+                    continue;
+                }
+                JsonNode data = segment.path("data");
+                FileInfo file = FileInfo.from(data.isMissingNode() ? segment : data);
+                if (file != null) {
+                    files.add(file);
+                }
+            }
+        }
+        return List.copyOf(files);
+    }
+
+    /**
      * 权限判断上下文。
      * <p>
      * 这些键值会被 {@code PermissionSubject.from(event)} 带入统一权限服务。

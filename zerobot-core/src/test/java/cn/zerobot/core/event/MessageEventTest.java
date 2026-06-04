@@ -46,6 +46,26 @@ class MessageEventTest {
     }
 
     @Test
+    void readsFilesFromMessageSegments() throws Exception {
+        MessageEvent event = new MessageEvent(mapper.readTree("""
+                {
+                  "post_type": "message",
+                  "message_type": "group",
+                  "raw_message": "[file]",
+                  "message": [
+                    {"type": "file", "data": {"file_id": "abc", "file": "server.log", "size": 123, "url": "https://example.com/server.log"}}
+                  ]
+                }
+                """));
+
+        assertThat(event.files()).hasSize(1);
+        assertThat(event.files().getFirst().id()).isEqualTo("abc");
+        assertThat(event.files().getFirst().name()).isEqualTo("server.log");
+        assertThat(event.files().getFirst().size()).isEqualTo(123L);
+        assertThat(event.files().getFirst().url()).isEqualTo("https://example.com/server.log");
+    }
+
+    @Test
     void resolvesPlainNumericUserId() throws Exception {
         MessageEvent event = new MessageEvent(mapper.readTree("""
                 {"post_type":"message","message_type":"private","raw_message":"/lp user 10001 info","message":"/lp user 10001 info"}

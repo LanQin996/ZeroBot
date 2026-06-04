@@ -63,6 +63,9 @@ public class ZeroBotConfig {
         private long reconnectIntervalMs = 5_000;
         private int reconnectFailuresBeforeCooldown = 5;
         private long reconnectCooldownMs = 60_000;
+        private long heartbeatTimeoutMs = 45_000;
+        private long heartbeatCheckIntervalMs = 5_000;
+        private long activeHeartbeatIntervalMs = 15_000;
 
         public String getWsUrl() {
             return wsUrl;
@@ -110,6 +113,30 @@ public class ZeroBotConfig {
 
         public void setReconnectCooldownMs(long reconnectCooldownMs) {
             this.reconnectCooldownMs = reconnectCooldownMs;
+        }
+
+        public long getHeartbeatTimeoutMs() {
+            return heartbeatTimeoutMs;
+        }
+
+        public void setHeartbeatTimeoutMs(long heartbeatTimeoutMs) {
+            this.heartbeatTimeoutMs = heartbeatTimeoutMs;
+        }
+
+        public long getHeartbeatCheckIntervalMs() {
+            return heartbeatCheckIntervalMs;
+        }
+
+        public void setHeartbeatCheckIntervalMs(long heartbeatCheckIntervalMs) {
+            this.heartbeatCheckIntervalMs = heartbeatCheckIntervalMs;
+        }
+
+        public long getActiveHeartbeatIntervalMs() {
+            return activeHeartbeatIntervalMs;
+        }
+
+        public void setActiveHeartbeatIntervalMs(long activeHeartbeatIntervalMs) {
+            this.activeHeartbeatIntervalMs = activeHeartbeatIntervalMs;
         }
     }
 }

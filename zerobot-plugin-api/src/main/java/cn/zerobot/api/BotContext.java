@@ -10,6 +10,7 @@ import cn.zerobot.api.event.MessageEvent;
 import cn.zerobot.api.event.NoticeEvent;
 import cn.zerobot.api.event.NoticeListener;
 import cn.zerobot.api.message.MessageSegment;
+import cn.zerobot.api.command.CommandExecutor;
 import cn.zerobot.api.event.PrivateMessageEvent;
 import cn.zerobot.api.event.PrivateMessageListener;
 import cn.zerobot.api.event.RequestEvent;
@@ -83,6 +84,16 @@ public interface BotContext {
      */
     default EventSubscription registerPermissionService(PermissionService permissionService) {
         throw new UnsupportedOperationException("This ZeroBot runtime does not support permission service registration");
+    }
+
+    /**
+     * 注册 plugin.yml 中声明的命令执行器。
+     * <p>
+     * 命令名应匹配 {@code plugin.yml -> commands -> name}。ZeroBot 会统一处理命令前缀、
+     * 别名、权限节点和 usage 回复。
+     */
+    default EventSubscription registerCommand(String name, CommandExecutor executor) {
+        throw new UnsupportedOperationException("This ZeroBot runtime does not support command registration");
     }
 
     /**

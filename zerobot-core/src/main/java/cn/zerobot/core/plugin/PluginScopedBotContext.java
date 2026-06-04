@@ -2,10 +2,12 @@ package cn.zerobot.core.plugin;
 
 import cn.zerobot.api.ActionResponse;
 import cn.zerobot.api.BotContext;
+import cn.zerobot.api.command.CommandExecutor;
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
 import cn.zerobot.api.permission.PermissionService;
+import cn.zerobot.core.command.CommandDispatcher;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -21,13 +23,21 @@ import java.util.concurrent.CompletableFuture;
 class PluginScopedBotContext implements BotContext {
     private final BotContext delegate;
     private final PluginHandle handle;
+    private final CommandDispatcher commandDispatcher;
     private final Path configDir;
     private final Path dataDir;
     private final ObjectMapper yamlMapper;
 
-    PluginScopedBotContext(BotContext delegate, PluginHandle handle, Path configRoot, Path dataRoot) throws IOException {
+    PluginScopedBotContext(
+            BotContext delegate,
+            PluginHandle handle,
+            Path configRoot,
+            Path dataRoot,
+            CommandDispatcher commandDispatcher
+    ) throws IOException {
         this.delegate = delegate;
         this.handle = handle;
+        this.commandDispatcher = commandDispatcher;
         this.configDir = resolveInside(configRoot, handle.descriptor().getId());
         this.dataDir = resolveInside(dataRoot, handle.descriptor().getId());
         this.yamlMapper = new ObjectMapper(YAMLFactory.builder()
@@ -70,6 +80,16 @@ class PluginScopedBotContext implements BotContext {
     @Override
     public EventSubscription registerPermissionService(PermissionService permissionService) {
         EventSubscription subscription = delegate.registerPermissionService(permissionService);
+        handle.subscriptions().add(subscription);
+        return subscription;
+    }
+
+    @Override
+    public EventSubscription registerCommand(String name, CommandExecutor executor) {
+        if (commandDispatcher == null) {
+            throw new UnsupportedOperationException("This ZeroBot runtime does not support command registration");
+        }
+        EventSubscription subscription = commandDispatcher.register(handle, name, executor);
         handle.subscriptions().add(subscription);
         return subscription;
     }

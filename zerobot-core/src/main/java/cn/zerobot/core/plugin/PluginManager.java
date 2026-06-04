@@ -2,6 +2,7 @@ package cn.zerobot.core.plugin;
 
 import cn.zerobot.api.BotContext;
 import cn.zerobot.api.BotPlugin;
+import cn.zerobot.core.command.CommandDispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
@@ -27,19 +28,25 @@ public class PluginManager {
     private final Path configRoot;
     private final Path dataRoot;
     private final BotContext context;
+    private final CommandDispatcher commandDispatcher;
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final Map<String, PluginHandle> plugins = new ConcurrentHashMap<>();
 
     public PluginManager(Path pluginsDir, BotContext context) {
-        this(pluginsDir, pluginsDir.toAbsolutePath().normalize().getParent(), context);
+        this(pluginsDir, pluginsDir.toAbsolutePath().normalize().getParent(), context, null);
     }
 
     public PluginManager(Path pluginsDir, Path baseDir, BotContext context) {
+        this(pluginsDir, baseDir, context, null);
+    }
+
+    public PluginManager(Path pluginsDir, Path baseDir, BotContext context, CommandDispatcher commandDispatcher) {
         this.baseDir = baseDir.toAbsolutePath().normalize();
         this.pluginsDir = pluginsDir;
         this.configRoot = this.baseDir.resolve("config").toAbsolutePath().normalize();
         this.dataRoot = this.baseDir.resolve("data").toAbsolutePath().normalize();
         this.context = context;
+        this.commandDispatcher = commandDispatcher;
     }
 
     public void ensurePluginsDir() throws IOException {
@@ -90,7 +97,7 @@ public class PluginManager {
             }
 
             handle = new PluginHandle(descriptor, absoluteJar, classLoader, plugin);
-            plugin.onLoad(new PluginScopedBotContext(context, handle, configRoot, dataRoot));
+            plugin.onLoad(new PluginScopedBotContext(context, handle, configRoot, dataRoot, commandDispatcher));
             plugins.put(descriptor.getId(), handle);
             log.info("插件已加载：{} v{} (ID: {}, 路径: {})",
                     descriptor.getName(),
@@ -101,6 +108,9 @@ public class PluginManager {
         } catch (Exception e) {
             if (handle != null) {
                 closeSubscriptions(handle);
+                if (commandDispatcher != null) {
+                    commandDispatcher.unregisterPlugin(handle);
+                }
             }
             classLoader.close();
             throw e;
@@ -119,6 +129,9 @@ public class PluginManager {
             error = e;
         }
         closeSubscriptions(handle);
+        if (commandDispatcher != null) {
+            commandDispatcher.unregisterPlugin(handle);
+        }
         try {
             handle.classLoader().close();
         } catch (IOException e) {

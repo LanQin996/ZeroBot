@@ -42,6 +42,15 @@ class PluginManagerTest {
         PluginHandle handle = manager.load(jar);
 
         assertThat(handle.descriptor().getId()).isEqualTo("test");
+        assertThat(handle.descriptor().getCommands())
+                .hasSize(1)
+                .first()
+                .satisfies(command -> {
+                    assertThat(command.getName()).isEqualTo("test");
+                    assertThat(command.getAliases()).contains("t");
+                    assertThat(command.getPermission()).isEqualTo("test.use");
+                    assertThat(command.getNoPermission()).isEqualTo("nope");
+                });
         assertThat(context.listeners).hasSize(1);
         assertThatThrownBy(() -> manager.load(jar)).isInstanceOf(IllegalStateException.class);
 
@@ -102,6 +111,14 @@ class PluginManagerTest {
                     name: Test Plugin
                     version: 1.0.0
                     main: testplugin.TestPlugin
+                    commands:
+                    - name: test
+                      aliases:
+                      - t
+                      description: Test command
+                      usage: /test
+                      permission: test.use
+                      noPermission: nope
                     """.getBytes(StandardCharsets.UTF_8));
             out.closeEntry();
         }

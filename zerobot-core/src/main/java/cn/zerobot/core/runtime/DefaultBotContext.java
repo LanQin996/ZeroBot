@@ -2,10 +2,12 @@ package cn.zerobot.core.runtime;
 
 import cn.zerobot.api.ActionResponse;
 import cn.zerobot.api.BotContext;
+import cn.zerobot.api.command.CommandExecutor;
 import cn.zerobot.api.event.EventListener;
 import cn.zerobot.api.event.EventSubscription;
 import cn.zerobot.api.event.MessageEvent;
 import cn.zerobot.api.permission.PermissionService;
+import cn.zerobot.core.command.CommandDispatcher;
 import cn.zerobot.core.permission.DelegatingPermissionService;
 import cn.zerobot.core.event.DefaultEventBus;
 import cn.zerobot.core.napcat.NapCatClient;
@@ -23,6 +25,7 @@ public class DefaultBotContext implements BotContext {
     private final NapCatClient client;
     private final DefaultEventBus eventBus;
     private final DelegatingPermissionService permissionService;
+    private CommandDispatcher commandDispatcher;
 
     public DefaultBotContext(Logger logger, NapCatClient client, DefaultEventBus eventBus, PermissionService permissionService) {
         this.logger = logger;
@@ -81,6 +84,18 @@ public class DefaultBotContext implements BotContext {
     @Override
     public EventSubscription registerPermissionService(PermissionService permissionService) {
         return this.permissionService.register(permissionService);
+    }
+
+    public void setCommandDispatcher(CommandDispatcher commandDispatcher) {
+        this.commandDispatcher = commandDispatcher;
+    }
+
+    @Override
+    public EventSubscription registerCommand(String name, CommandExecutor executor) {
+        if (commandDispatcher == null) {
+            throw new UnsupportedOperationException("Command dispatcher is not available");
+        }
+        throw new UnsupportedOperationException("Root context cannot register plugin commands");
     }
 
     @Override

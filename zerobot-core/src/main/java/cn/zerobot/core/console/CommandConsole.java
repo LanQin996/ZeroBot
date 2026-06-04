@@ -4,6 +4,7 @@ import cn.zerobot.core.plugin.PluginHandle;
 import cn.zerobot.core.plugin.PluginManager;
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.ParsedLine;
@@ -72,8 +73,10 @@ public class CommandConsole implements AutoCloseable {
                     close();
                     return;
                 }
-                handle(line.trim());
+                handle(stripBom(line).trim());
             }
+        } catch (EndOfFileException e) {
+            close();
         } catch (UserInterruptException e) {
             close();
         } catch (Exception e) {
@@ -82,6 +85,12 @@ public class CommandConsole implements AutoCloseable {
             }
             close();
         }
+    }
+
+    private String stripBom(String line) {
+        return line != null && !line.isEmpty() && line.charAt(0) == '\ufeff'
+                ? line.substring(1)
+                : line;
     }
 
     private void handle(String line) {
@@ -172,11 +181,14 @@ public class CommandConsole implements AutoCloseable {
     }
 
     private String formatPlugin(PluginHandle plugin) {
-        return "%s v%s (ID: %s, 路径: %s)".formatted(
+        int commandCount = plugin.descriptor().getCommands().size();
+        String commandInfo = commandCount == 0 ? "" : ", 命令: " + commandCount;
+        return "%s v%s (ID: %s, 路径: %s%s)".formatted(
                 plugin.descriptor().getName(),
                 plugin.descriptor().getVersion(),
                 plugin.descriptor().getId(),
-                pluginManager.displayPath(plugin.jarPath()));
+                pluginManager.displayPath(plugin.jarPath()),
+                commandInfo);
     }
 
     private void printBanner() {

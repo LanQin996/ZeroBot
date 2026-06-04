@@ -2,6 +2,7 @@ package cn.zerobot.app;
 
 import cn.zerobot.core.config.ZeroBotConfig;
 import cn.zerobot.core.console.CommandConsole;
+import cn.zerobot.core.command.CommandDispatcher;
 import cn.zerobot.core.event.DefaultEventBus;
 import cn.zerobot.core.napcat.NapCatClient;
 import cn.zerobot.core.permission.SuperAdminPermissionService;
@@ -28,7 +29,10 @@ public class ZeroBotApplication {
         NapCatClient client = new NapCatClient(config.getNapcat(), eventBus, mapper);
         SuperAdminPermissionService permissionService = new SuperAdminPermissionService(config.getSuperAdmins());
         DefaultBotContext context = new DefaultBotContext(log, client, eventBus, permissionService);
-        PluginManager pluginManager = new PluginManager(pluginsDir, baseDir, context);
+        CommandDispatcher commandDispatcher = new CommandDispatcher(context);
+        context.setCommandDispatcher(commandDispatcher);
+        commandDispatcher.start();
+        PluginManager pluginManager = new PluginManager(pluginsDir, baseDir, context, commandDispatcher);
         CommandConsole console = new CommandConsole(pluginManager);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

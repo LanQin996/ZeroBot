@@ -37,8 +37,16 @@ public class NapCatClient implements Closeable {
     private final Map<String, PendingAction> pending = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final AtomicBoolean reconnectScheduled = new AtomicBoolean();
+    private final AtomicBoolean heartbeatMissingWarned = new AtomicBoolean();
+    private final AtomicBoolean activeHeartbeatRunning = new AtomicBoolean();
     private final AtomicInteger reconnectFailures = new AtomicInteger();
     private volatile WebSocket webSocket;
+    private volatile long connectedAtMs = -1;
+    private volatile long lastHeartbeatAtMs = -1;
+    private volatile Boolean lastHeartbeatHealthy;
+    private volatile String lastHeartbeatStatus = "";
+    private volatile Boolean lastActiveHeartbeatHealthy;
+    private volatile String lastActiveHeartbeatStatus = "";
 
     public NapCatClient(ZeroBotConfig.NapCatConfig config, DefaultEventBus eventBus, ObjectMapper mapper) {
         this.config = config;
@@ -52,6 +60,8 @@ public class NapCatClient implements Closeable {
             thread.setDaemon(true);
             return thread;
         });
+        scheduleHeartbeatMonitor();
+        scheduleActiveHeartbeat();
     }
 
     public CompletableFuture<Void> connect() {
@@ -165,6 +175,218 @@ public class NapCatClient implements Closeable {
         return failures % threshold == 0;
     }
 
+    private void scheduleHeartbeatMonitor() {
+        long checkIntervalMs = config.getHeartbeatCheckIntervalMs();
+        if (checkIntervalMs <= 0) {
+            return;
+        }
+        long normalizedIntervalMs = Math.max(1_000, checkIntervalMs);
+        scheduler.scheduleWithFixedDelay(
+                this::checkHeartbeatTimeoutSafely,
+                normalizedIntervalMs,
+                normalizedIntervalMs,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private void checkHeartbeatTimeoutSafely() {
+        try {
+            checkHeartbeatTimeout();
+        } catch (Exception e) {
+            log.debug("NapCat heartbeat monitor failed", e);
+        }
+    }
+
+    private void checkHeartbeatTimeout() {
+        long timeoutMs = config.getHeartbeatTimeoutMs();
+        if (closed.get() || timeoutMs <= 0 || webSocket == null) {
+            return;
+        }
+        long lastSeen = lastHeartbeatAtMs > 0 ? lastHeartbeatAtMs : connectedAtMs;
+        if (lastSeen <= 0) {
+            return;
+        }
+        long elapsedMs = System.currentTimeMillis() - lastSeen;
+        if (elapsedMs >= timeoutMs && heartbeatMissingWarned.compareAndSet(false, true)) {
+            String source = lastHeartbeatAtMs > 0 ? "上一条心跳" : "连接建立";
+            log.warn("NapCat WebSocket 仍处于连接状态，但从{}起已经 {} 毫秒没有收到心跳。请检查 NapCat/QQ 是否仍在线。",
+                    source, elapsedMs);
+        }
+    }
+
+    private void scheduleActiveHeartbeat() {
+        long intervalMs = config.getActiveHeartbeatIntervalMs();
+        if (intervalMs <= 0) {
+            return;
+        }
+        long normalizedIntervalMs = Math.max(1_000, intervalMs);
+        scheduler.scheduleWithFixedDelay(
+                this::activeHeartbeatSafely,
+                normalizedIntervalMs,
+                normalizedIntervalMs,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private void activeHeartbeatSafely() {
+        try {
+            activeHeartbeat();
+        } catch (Exception e) {
+            log.debug("NapCat active heartbeat failed", e);
+        }
+    }
+
+    private void activeHeartbeat() {
+        if (closed.get() || webSocket == null || !activeHeartbeatRunning.compareAndSet(false, true)) {
+            return;
+        }
+        callAction("get_status", Map.of())
+                .whenComplete((response, error) -> {
+                    try {
+                        handleActiveHeartbeatResult(response, error);
+                    } finally {
+                        activeHeartbeatRunning.set(false);
+                    }
+                });
+    }
+
+    private void handleActiveHeartbeatResult(ActionResponse<JsonNode> response, Throwable error) {
+        if (error != null) {
+            reportActiveHeartbeatHealth(false, "action=get_status, error=" + rootMessage(error));
+            return;
+        }
+        if (response == null) {
+            reportActiveHeartbeatHealth(false, "action=get_status, response=null");
+            return;
+        }
+        if (!response.ok()) {
+            reportActiveHeartbeatHealth(false, "action=get_status, status=%s, retcode=%d, message=%s, wording=%s"
+                    .formatted(response.status(), response.retcode(), response.message(), response.wording()));
+            return;
+        }
+        JsonNode data = response.data();
+        if (data == null || data.isNull() || !data.isObject()) {
+            reportActiveHeartbeatHealth(true, "action=get_status, status=ok");
+            return;
+        }
+        boolean healthy = isHeartbeatHealthy(data);
+        reportActiveHeartbeatHealth(healthy, "action=get_status, " + heartbeatStatusSummary(data));
+    }
+
+    private void reportActiveHeartbeatHealth(boolean healthy, String status) {
+        Boolean previous = lastActiveHeartbeatHealthy;
+        String previousStatus = lastActiveHeartbeatStatus;
+        lastActiveHeartbeatHealthy = healthy;
+        lastActiveHeartbeatStatus = status;
+
+        if (!healthy && (!Boolean.FALSE.equals(previous) || !status.equals(previousStatus))) {
+            log.warn("NapCat 主动心跳异常：{}。ZeroBot 将继续定时检测。", status);
+            return;
+        }
+        if (healthy && Boolean.FALSE.equals(previous)) {
+            log.info("NapCat 主动心跳恢复正常：{}", status);
+        }
+    }
+
+    private void handleMetaEvent(JsonNode node) {
+        if ("heartbeat".equals(node.path("meta_event_type").asText(""))) {
+            handleHeartbeat(node);
+        }
+    }
+
+    private void handleHeartbeat(JsonNode node) {
+        lastHeartbeatAtMs = System.currentTimeMillis();
+        heartbeatMissingWarned.set(false);
+
+        JsonNode status = node.get("status");
+        if (status == null || status.isNull() || !status.isObject()) {
+            reportHeartbeatHealth(false, "status=missing");
+            return;
+        }
+
+        boolean healthy = isHeartbeatHealthy(status);
+        reportHeartbeatHealth(healthy, heartbeatStatusSummary(status));
+    }
+
+    private boolean isHeartbeatHealthy(JsonNode status) {
+        return !Boolean.FALSE.equals(booleanValue(status, "online"))
+                && !Boolean.FALSE.equals(booleanValue(status, "good"))
+                && !Boolean.FALSE.equals(booleanValue(status, "app_good"));
+    }
+
+    private void reportHeartbeatHealth(boolean healthy, String status) {
+        Boolean previous = lastHeartbeatHealthy;
+        String previousStatus = lastHeartbeatStatus;
+        lastHeartbeatHealthy = healthy;
+        lastHeartbeatStatus = status;
+
+        if (!healthy && (!Boolean.FALSE.equals(previous) || !status.equals(previousStatus))) {
+            log.warn("NapCat 心跳异常：{}。QQ 可能已离线，或 NapCat 状态异常。", status);
+            return;
+        }
+        if (healthy && Boolean.FALSE.equals(previous)) {
+            log.info("NapCat 心跳恢复正常：{}", status);
+        }
+    }
+
+    private String heartbeatStatusSummary(JsonNode status) {
+        StringBuilder builder = new StringBuilder();
+        appendStatusField(builder, status, "online");
+        appendStatusField(builder, status, "good");
+        appendStatusField(builder, status, "app_good");
+        appendStatusField(builder, status, "app_enabled");
+        appendStatusField(builder, status, "app_initialized");
+        return builder.isEmpty() ? status.toString() : builder.toString();
+    }
+
+    private void appendStatusField(StringBuilder builder, JsonNode status, String field) {
+        JsonNode value = status.get(field);
+        if (value == null || value.isNull()) {
+            return;
+        }
+        if (!builder.isEmpty()) {
+            builder.append(", ");
+        }
+        builder.append(field).append('=').append(value.asText());
+    }
+
+    private Boolean booleanValue(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() ? null : value.asBoolean();
+    }
+
+    private void resetConnectionState() {
+        connectedAtMs = System.currentTimeMillis();
+        lastHeartbeatAtMs = -1;
+        lastHeartbeatHealthy = null;
+        lastHeartbeatStatus = "";
+        lastActiveHeartbeatHealthy = null;
+        lastActiveHeartbeatStatus = "";
+        heartbeatMissingWarned.set(false);
+        activeHeartbeatRunning.set(false);
+    }
+
+    private void markDisconnected() {
+        webSocket = null;
+        connectedAtMs = -1;
+        lastHeartbeatAtMs = -1;
+        lastHeartbeatHealthy = null;
+        lastHeartbeatStatus = "";
+        lastActiveHeartbeatHealthy = null;
+        lastActiveHeartbeatStatus = "";
+        heartbeatMissingWarned.set(false);
+        activeHeartbeatRunning.set(false);
+    }
+
+    private void failPendingActions(String message) {
+        IOException error = new IOException(message);
+        pending.forEach((echo, action) -> {
+            action.timeout().cancel(false);
+            action.future().completeExceptionally(error);
+        });
+        pending.clear();
+    }
+
     private static String rootMessage(Throwable error) {
         Throwable current = error;
         while (current.getCause() != null) {
@@ -180,6 +402,7 @@ public class NapCatClient implements Closeable {
         @Override
         public void onOpen(WebSocket webSocket) {
             log.info("NapCat WebSocket 已连接");
+            resetConnectionState();
             reconnectFailures.set(0);
             reconnectScheduled.set(false);
             WebSocket.Listener.super.onOpen(webSocket);
@@ -198,8 +421,13 @@ public class NapCatClient implements Closeable {
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-            log.info("NapCat WebSocket 已关闭：{} {}", statusCode, reason);
-            NapCatClient.this.webSocket = null;
+            if (closed.get()) {
+                log.info("NapCat WebSocket 已关闭：{} {}", statusCode, reason);
+            } else {
+                log.warn("NapCat WebSocket 已断开：{} {}。将自动尝试重连。", statusCode, reason);
+            }
+            markDisconnected();
+            failPendingActions("NapCat WebSocket disconnected");
             scheduleReconnectAfterFailure();
             return CompletableFuture.completedFuture(null);
         }
@@ -207,7 +435,8 @@ public class NapCatClient implements Closeable {
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             log.warn("NapCat WebSocket 异常：{}", rootMessage(error));
-            NapCatClient.this.webSocket = null;
+            markDisconnected();
+            failPendingActions("NapCat WebSocket error: " + rootMessage(error));
             scheduleReconnectAfterFailure();
         }
 
@@ -220,6 +449,9 @@ public class NapCatClient implements Closeable {
                     return;
                 }
                 if (node.has("post_type")) {
+                    if ("meta_event".equals(text(node, "post_type"))) {
+                        handleMetaEvent(node);
+                    }
                     eventBus.publish(node);
                 } else {
                     log.debug("Ignoring NapCat message without echo/post_type: {}", message);

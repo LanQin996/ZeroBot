@@ -37,6 +37,29 @@ class NapCatClientTest {
     }
 
     @Test
+    void treatsOfflineAccountAsSeparateFromRuntimeHealth() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        var status = mapper.readTree("""
+                {"online":false,"good":true}
+                """);
+
+        assertThat(NapCatClient.isRuntimeHealthy(status)).isTrue();
+        assertThat(NapCatClient.onlineState(status)).isFalse();
+        assertThat(NapCatClient.heartbeatStatusSummary(status)).isEqualTo("online=false, good=true");
+    }
+
+    @Test
+    void treatsBadRuntimeAsUnhealthy() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        var status = mapper.readTree("""
+                {"online":true,"good":false}
+                """);
+
+        assertThat(NapCatClient.isRuntimeHealthy(status)).isFalse();
+        assertThat(NapCatClient.onlineState(status)).isTrue();
+    }
+
+    @Test
     void matchesActionResponsesByEchoAndDispatchesEvents() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         ArrayBlockingQueue<String> outbound = new ArrayBlockingQueue<>(1);

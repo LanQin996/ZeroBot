@@ -273,7 +273,7 @@ public interface BotContext {
     /**
      * 向群发送本地图片文件。
      * <p>
-     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     * ZeroBot 会把本地文件读成 base64:// 数据，避免 NapCat 无法访问 ZeroBot 所在机器的本地路径。
      */
     default CompletableFuture<ActionResponse<JsonNode>> sendGroupImage(String groupId, Path file) {
         return sendGroupMsg(groupId, List.of(MessageSegment.image(file)));
@@ -298,7 +298,7 @@ public interface BotContext {
     /**
      * 向私聊用户发送本地图片文件。
      * <p>
-     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     * ZeroBot 会把本地文件读成 base64:// 数据，避免 NapCat 无法访问 ZeroBot 所在机器的本地路径。
      */
     default CompletableFuture<ActionResponse<JsonNode>> sendPrivateImage(String userId, Path file) {
         return sendPrivateMsg(userId, List.of(MessageSegment.image(file)));
@@ -314,7 +314,7 @@ public interface BotContext {
     /**
      * 回复本地图片文件到消息来源。
      * <p>
-     * ZeroBot 会把本地路径转换成 OneBot/NapCat 更容易识别的 file:// URI。
+     * ZeroBot 会把本地文件读成 base64:// 数据，避免 NapCat 无法访问 ZeroBot 所在机器的本地路径。
      */
     default CompletableFuture<ActionResponse<JsonNode>> replyImage(MessageEvent event, Path file) {
         return reply(event, List.of(MessageSegment.image(file)));

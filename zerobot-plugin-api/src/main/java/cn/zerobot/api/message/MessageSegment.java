@@ -4,7 +4,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -35,7 +39,12 @@ public record MessageSegment(String type, Map<String, Object> data) {
     }
 
     public static String imageFile(Path file) {
-        return file.toAbsolutePath().normalize().toUri().toString();
+        Path image = file.toAbsolutePath().normalize();
+        try {
+            return "base64://" + Base64.getEncoder().encodeToString(Files.readAllBytes(image));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read image file: " + image, e);
+        }
     }
 
     public static MessageSegment reply(long messageId) {

@@ -14,7 +14,7 @@ class MessageSegmentTest {
     Path tempDir;
 
     @Test
-    void localImagePathUsesFileUri() throws Exception {
+    void localImagePathUsesBase64Data() throws Exception {
         Path image = tempDir.resolve("test image.png");
         Files.write(image, new byte[]{1, 2, 3});
 
@@ -23,7 +23,6 @@ class MessageSegmentTest {
         assertThat(segment.type()).isEqualTo("image");
         assertThat(segment.data().get("file"))
                 .asString()
-                .startsWith("file:")
-                .contains("test%20image.png");
+                .isEqualTo("base64://AQID");
     }
 }

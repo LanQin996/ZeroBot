@@ -47,6 +47,7 @@ public class NapCatClient implements Closeable {
     private volatile String lastHeartbeatStatus = "";
     private volatile Boolean lastActiveHeartbeatHealthy;
     private volatile String lastActiveHeartbeatStatus = "";
+    private volatile Boolean lastBotOnline;
 
     public NapCatClient(ZeroBotConfig.NapCatConfig config, DefaultEventBus eventBus, ObjectMapper mapper) {
         this.config = config;
@@ -269,8 +270,9 @@ public class NapCatClient implements Closeable {
             reportActiveHeartbeatHealth(true, "action=get_status, status=ok");
             return;
         }
-        boolean healthy = isHeartbeatHealthy(data);
+        boolean healthy = isRuntimeHealthy(data);
         reportActiveHeartbeatHealth(healthy, "action=get_status, " + heartbeatStatusSummary(data));
+        reportBotOnlineStatus(data, "主动状态检查");
     }
 
     private void reportActiveHeartbeatHealth(boolean healthy, String status) {
@@ -304,14 +306,16 @@ public class NapCatClient implements Closeable {
             return;
         }
 
-        boolean healthy = isHeartbeatHealthy(status);
+        boolean healthy = isRuntimeHealthy(status);
         reportHeartbeatHealth(healthy, heartbeatStatusSummary(status));
+        reportBotOnlineStatus(status, "心跳");
     }
 
-    private boolean isHeartbeatHealthy(JsonNode status) {
-        return !Boolean.FALSE.equals(booleanValue(status, "online"))
-                && !Boolean.FALSE.equals(booleanValue(status, "good"))
-                && !Boolean.FALSE.equals(booleanValue(status, "app_good"));
+    static boolean isRuntimeHealthy(JsonNode status) {
+        Boolean good = booleanValue(status, "good");
+        Boolean appGood = booleanValue(status, "app_good");
+        return !Boolean.FALSE.equals(good)
+                && !Boolean.FALSE.equals(appGood);
     }
 
     private void reportHeartbeatHealth(boolean healthy, String status) {
@@ -321,7 +325,7 @@ public class NapCatClient implements Closeable {
         lastHeartbeatStatus = status;
 
         if (!healthy && (!Boolean.FALSE.equals(previous) || !status.equals(previousStatus))) {
-            log.warn("NapCat 心跳异常：{}。QQ 可能已离线，或 NapCat 状态异常。", status);
+            log.warn("NapCat 心跳状态异常：{}。请检查 NapCat 运行状态。", status);
             return;
         }
         if (healthy && Boolean.FALSE.equals(previous)) {
@@ -329,7 +333,30 @@ public class NapCatClient implements Closeable {
         }
     }
 
-    private String heartbeatStatusSummary(JsonNode status) {
+    private void reportBotOnlineStatus(JsonNode status, String source) {
+        Boolean online = onlineState(status);
+        if (online == null) {
+            return;
+        }
+
+        Boolean previous = lastBotOnline;
+        String summary = heartbeatStatusSummary(status);
+        lastBotOnline = online;
+
+        if (!online && !Boolean.FALSE.equals(previous)) {
+            log.info("NapCat {}显示 QQ 当前离线：{}。ZeroBot 与 NapCat 的连接仍保持。", source, summary);
+            return;
+        }
+        if (online && Boolean.FALSE.equals(previous)) {
+            log.info("NapCat {}显示 QQ 已恢复在线：{}", source, summary);
+        }
+    }
+
+    static Boolean onlineState(JsonNode status) {
+        return booleanValue(status, "online");
+    }
+
+    static String heartbeatStatusSummary(JsonNode status) {
         StringBuilder builder = new StringBuilder();
         appendStatusField(builder, status, "online");
         appendStatusField(builder, status, "good");
@@ -339,7 +366,7 @@ public class NapCatClient implements Closeable {
         return builder.isEmpty() ? status.toString() : builder.toString();
     }
 
-    private void appendStatusField(StringBuilder builder, JsonNode status, String field) {
+    private static void appendStatusField(StringBuilder builder, JsonNode status, String field) {
         JsonNode value = status.get(field);
         if (value == null || value.isNull()) {
             return;
@@ -350,7 +377,7 @@ public class NapCatClient implements Closeable {
         builder.append(field).append('=').append(value.asText());
     }
 
-    private Boolean booleanValue(JsonNode node, String field) {
+    private static Boolean booleanValue(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asBoolean();
     }
@@ -362,6 +389,7 @@ public class NapCatClient implements Closeable {
         lastHeartbeatStatus = "";
         lastActiveHeartbeatHealthy = null;
         lastActiveHeartbeatStatus = "";
+        lastBotOnline = null;
         heartbeatMissingWarned.set(false);
         activeHeartbeatRunning.set(false);
     }
@@ -374,6 +402,7 @@ public class NapCatClient implements Closeable {
         lastHeartbeatStatus = "";
         lastActiveHeartbeatHealthy = null;
         lastActiveHeartbeatStatus = "";
+        lastBotOnline = null;
         heartbeatMissingWarned.set(false);
         activeHeartbeatRunning.set(false);
     }

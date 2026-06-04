@@ -22,6 +22,7 @@ import java.util.jar.JarFile;
 public class PluginManager {
     private static final Logger log = LoggerFactory.getLogger(PluginManager.class);
 
+    private final Path baseDir;
     private final Path pluginsDir;
     private final Path configRoot;
     private final Path dataRoot;
@@ -34,9 +35,10 @@ public class PluginManager {
     }
 
     public PluginManager(Path pluginsDir, Path baseDir, BotContext context) {
+        this.baseDir = baseDir.toAbsolutePath().normalize();
         this.pluginsDir = pluginsDir;
-        this.configRoot = baseDir.resolve("config").toAbsolutePath().normalize();
-        this.dataRoot = baseDir.resolve("data").toAbsolutePath().normalize();
+        this.configRoot = this.baseDir.resolve("config").toAbsolutePath().normalize();
+        this.dataRoot = this.baseDir.resolve("data").toAbsolutePath().normalize();
         this.context = context;
     }
 
@@ -81,11 +83,11 @@ public class PluginManager {
             handle = new PluginHandle(descriptor, absoluteJar, classLoader, plugin);
             plugin.onLoad(new PluginScopedBotContext(context, handle, configRoot, dataRoot));
             plugins.put(descriptor.getId(), handle);
-            log.info("插件已加载：{} v{} (ID: {}, 文件: {})",
+            log.info("插件已加载：{} v{} (ID: {}, 路径: {})",
                     descriptor.getName(),
                     descriptor.getVersion(),
                     descriptor.getId(),
-                    absoluteJar.getFileName());
+                    displayPath(absoluteJar));
             return handle;
         } catch (Exception e) {
             if (handle != null) {
@@ -146,7 +148,7 @@ public class PluginManager {
                 try {
                     load(jar);
                 } catch (Exception e) {
-                    log.warn("Failed to load plugin jar {}", jar, e);
+                    log.warn("Failed to load plugin jar {}", displayPath(jar), e);
                 }
             }
         }
@@ -186,5 +188,17 @@ public class PluginManager {
             }
         }
         handle.subscriptions().clear();
+    }
+
+    public String displayPath(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        if (normalized.startsWith(baseDir)) {
+            return toPortablePath(baseDir.relativize(normalized));
+        }
+        return toPortablePath(normalized);
+    }
+
+    private String toPortablePath(Path path) {
+        return path.toString().replace('\\', '/');
     }
 }

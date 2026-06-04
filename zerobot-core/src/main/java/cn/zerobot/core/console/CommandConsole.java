@@ -152,11 +152,11 @@ public class CommandConsole implements AutoCloseable {
     }
 
     private String formatPlugin(PluginHandle plugin) {
-        return "%s v%s (ID: %s, 文件: %s)".formatted(
+        return "%s v%s (ID: %s, 路径: %s)".formatted(
                 plugin.descriptor().getName(),
                 plugin.descriptor().getVersion(),
                 plugin.descriptor().getId(),
-                plugin.jarPath().getFileName());
+                pluginManager.displayPath(plugin.jarPath()));
     }
 
     private void printBanner() {

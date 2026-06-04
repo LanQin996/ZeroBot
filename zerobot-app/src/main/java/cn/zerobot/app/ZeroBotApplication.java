@@ -38,8 +38,8 @@ public class ZeroBotApplication {
         }, "zerobot-shutdown"));
 
         pluginManager.ensurePluginsDir();
-        log.info("ZeroBot home: {}", baseDir);
-        log.info("Plugin directory: {}", pluginsDir);
+        log.info("ZeroBot home: {}", displayPath(baseDir, baseDir));
+        log.info("Plugin directory: {}", displayPath(baseDir, pluginsDir));
         pluginManager.loadAllFromDirectory();
         client.start();
         console.start();
@@ -57,5 +57,22 @@ public class ZeroBotApplication {
         }
         Files.createDirectories(candidate);
         return candidate.toAbsolutePath().normalize();
+    }
+
+    private static String displayPath(Path baseDir, Path path) {
+        Path normalizedBase = baseDir.toAbsolutePath().normalize();
+        Path normalizedPath = path.toAbsolutePath().normalize();
+        if (normalizedPath.startsWith(normalizedBase)) {
+            Path relative = normalizedBase.relativize(normalizedPath);
+            if (relative.toString().isBlank()) {
+                return ".";
+            }
+            return toPortablePath(relative);
+        }
+        return toPortablePath(normalizedPath);
+    }
+
+    private static String toPortablePath(Path path) {
+        return path.toString().replace('\\', '/');
     }
 }

@@ -121,10 +121,7 @@ public class CommandConsole implements AutoCloseable {
 
     private void loadPlugin(String jarPath) throws Exception {
         PluginHandle handle = pluginManager.load(Path.of(jarPath));
-        log.info("已加载插件：{} {} ({})",
-                handle.descriptor().getId(),
-                handle.descriptor().getVersion(),
-                handle.jarPath());
+        log.info("已加载插件：{}", formatPlugin(handle));
     }
 
     private void unloadPlugin(String id) throws Exception {
@@ -134,10 +131,7 @@ public class CommandConsole implements AutoCloseable {
 
     private void reloadPlugin(String id) throws Exception {
         PluginHandle handle = pluginManager.reload(id);
-        log.info("已重载插件：{} {} ({})",
-                handle.descriptor().getId(),
-                handle.descriptor().getVersion(),
-                handle.jarPath());
+        log.info("已重载插件：{}", formatPlugin(handle));
     }
 
     private void reloadAllPlugins() throws Exception {
@@ -151,14 +145,18 @@ public class CommandConsole implements AutoCloseable {
             log.info("当前没有已加载插件。");
             return;
         }
-        log.info("已加载插件：");
+        log.info("已加载插件（{}）：", plugins.size());
         for (PluginHandle plugin : plugins) {
-            log.info("- {} {} | {} | {}",
-                    plugin.descriptor().getId(),
-                    plugin.descriptor().getVersion(),
-                    plugin.descriptor().getName(),
-                    plugin.jarPath());
+            log.info("- {}", formatPlugin(plugin));
         }
+    }
+
+    private String formatPlugin(PluginHandle plugin) {
+        return "%s v%s (ID: %s, 文件: %s)".formatted(
+                plugin.descriptor().getName(),
+                plugin.descriptor().getVersion(),
+                plugin.descriptor().getId(),
+                plugin.jarPath().getFileName());
     }
 
     private void printBanner() {

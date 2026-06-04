@@ -81,7 +81,11 @@ public class PluginManager {
             handle = new PluginHandle(descriptor, absoluteJar, classLoader, plugin);
             plugin.onLoad(new PluginScopedBotContext(context, handle, configRoot, dataRoot));
             plugins.put(descriptor.getId(), handle);
-            log.info("Loaded plugin {} {} from {}", descriptor.getId(), descriptor.getVersion(), absoluteJar);
+            log.info("插件已加载：{} v{} (ID: {}, 文件: {})",
+                    descriptor.getName(),
+                    descriptor.getVersion(),
+                    descriptor.getId(),
+                    absoluteJar.getFileName());
             return handle;
         } catch (Exception e) {
             if (handle != null) {
@@ -113,7 +117,7 @@ public class PluginManager {
                 error.addSuppressed(e);
             }
         }
-        log.info("Unloaded plugin {}", id);
+        log.info("插件已卸载：{} (ID: {})", handle.descriptor().getName(), id);
         if (error != null) {
             throw error;
         }

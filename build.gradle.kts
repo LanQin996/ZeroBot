@@ -6,7 +6,7 @@ import org.gradle.api.tasks.bundling.Zip
 
 allprojects {
     group = "cn.zerobot"
-    version = "0.1.4"
+    version = "0.1.5"
 }
 
 java {

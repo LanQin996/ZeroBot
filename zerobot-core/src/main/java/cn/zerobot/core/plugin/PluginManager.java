@@ -52,6 +52,15 @@ public class PluginManager {
                 .toList();
     }
 
+    public Collection<Path> availablePluginJars() throws IOException {
+        ensurePluginsDir();
+        try (var stream = Files.list(pluginsDir)) {
+            return stream.filter(path -> path.toString().endsWith(".jar"))
+                    .sorted()
+                    .toList();
+        }
+    }
+
     public PluginHandle load(Path jarPath) throws Exception {
         Path absoluteJar = jarPath.toAbsolutePath().normalize();
         if (Files.notExists(absoluteJar)) {

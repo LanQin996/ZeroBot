@@ -2,13 +2,22 @@ package cn.zerobot.core.console;
 
 import cn.zerobot.core.plugin.PluginHandle;
 import cn.zerobot.core.plugin.PluginManager;
+import org.jline.reader.Candidate;
+import org.jline.reader.Completer;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.ParsedLine;
+import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -47,15 +56,23 @@ public class CommandConsole implements AutoCloseable {
 
     private void loop() {
         printBanner();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+        try (Terminal terminal = TerminalBuilder.builder()
+                .system(true)
+                .build()) {
+            LineReader reader = LineReaderBuilder.builder()
+                    .terminal(terminal)
+                    .completer(new ConsoleCompleter())
+                    .build();
             while (running.get()) {
-                String line = reader.readLine();
+                String line = reader.readLine("> ");
                 if (line == null) {
                     close();
                     return;
                 }
                 handle(line.trim());
             }
+        } catch (UserInterruptException e) {
+            close();
         } catch (Exception e) {
             if (running.get()) {
                 log.warn("Console stopped unexpectedly", e);
@@ -181,5 +198,99 @@ public class CommandConsole implements AutoCloseable {
         log.info("  plugin unload <id>");
         log.info("  plugin reload <id>");
         log.info("  plugin reload-all");
+    }
+
+    private class ConsoleCompleter implements Completer {
+        private static final List<String> ROOT_COMMANDS = List.of(
+                "help",
+                "plugin",
+                "plugins",
+                "load",
+                "unload",
+                "reload",
+                "reload-all",
+                "stop",
+                "exit",
+                "quit"
+        );
+        private static final List<String> PLUGIN_COMMANDS = List.of(
+                "list",
+                "load",
+                "unload",
+                "reload",
+                "reload-all"
+        );
+
+        @Override
+        public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
+            List<String> words = new ArrayList<>(line.words());
+            int wordIndex = line.wordIndex();
+            String current = line.word();
+            boolean newWord = line.line().endsWith(" ") || line.line().endsWith("\t");
+            if (newWord) {
+                wordIndex = words.size();
+                current = "";
+            }
+
+            if (wordIndex == 0) {
+                addMatches(candidates, ROOT_COMMANDS, current);
+                return;
+            }
+
+            String root = words.get(0).toLowerCase();
+            if ("plugin".equals(root) || "plugins".equals(root)) {
+                completePlugin(words, wordIndex, current, candidates);
+                return;
+            }
+
+            if (("unload".equals(root) || "reload".equals(root)) && wordIndex == 1) {
+                addPluginIdMatches(candidates, current);
+                return;
+            }
+
+            if ("load".equals(root) && wordIndex == 1) {
+                addPluginJarMatches(candidates, current);
+            }
+        }
+
+        private void completePlugin(List<String> words, int wordIndex, String current, List<Candidate> candidates) {
+            if (wordIndex == 1) {
+                addMatches(candidates, PLUGIN_COMMANDS, current);
+                return;
+            }
+            if (wordIndex != 2 || words.size() < 2) {
+                return;
+            }
+            String subcommand = words.get(1).toLowerCase();
+            if ("unload".equals(subcommand) || "reload".equals(subcommand)) {
+                addPluginIdMatches(candidates, current);
+            } else if ("load".equals(subcommand)) {
+                addPluginJarMatches(candidates, current);
+            }
+        }
+
+        private void addPluginIdMatches(List<Candidate> candidates, String current) {
+            pluginManager.plugins().stream()
+                    .map(plugin -> plugin.descriptor().getId())
+                    .filter(id -> id.startsWith(current))
+                    .forEach(id -> candidates.add(new Candidate(id)));
+        }
+
+        private void addPluginJarMatches(List<Candidate> candidates, String current) {
+            try {
+                pluginManager.availablePluginJars().stream()
+                        .map(pluginManager::displayPath)
+                        .filter(path -> path.startsWith(current) || Path.of(path).getFileName().toString().startsWith(current))
+                        .forEach(path -> candidates.add(new Candidate(path)));
+            } catch (IOException e) {
+                log.debug("Failed to list plugin jars for completion", e);
+            }
+        }
+
+        private void addMatches(List<Candidate> candidates, List<String> values, String current) {
+            values.stream()
+                    .filter(value -> value.startsWith(current))
+                    .forEach(value -> candidates.add(new Candidate(value)));
+        }
     }
 }

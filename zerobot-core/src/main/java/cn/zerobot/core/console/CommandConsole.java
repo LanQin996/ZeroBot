@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CommandConsole implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(CommandConsole.class);
+    private static final String JLINE_DEPRECATED_PROVIDER_WARNING_PROPERTY =
+            "org.jline.terminal.disableDeprecatedProviderWarning";
 
     private final PluginManager pluginManager;
     private final CountDownLatch stopLatch = new CountDownLatch(1);
@@ -56,6 +58,7 @@ public class CommandConsole implements AutoCloseable {
 
     private void loop() {
         printBanner();
+        System.setProperty(JLINE_DEPRECATED_PROVIDER_WARNING_PROPERTY, "true");
         try (Terminal terminal = TerminalBuilder.builder()
                 .system(true)
                 .build()) {
@@ -200,7 +203,7 @@ public class CommandConsole implements AutoCloseable {
         log.info("  plugin reload-all");
     }
 
-    private class ConsoleCompleter implements Completer {
+    class ConsoleCompleter implements Completer {
         private static final List<String> ROOT_COMMANDS = List.of(
                 "help",
                 "plugin",
@@ -226,9 +229,9 @@ public class CommandConsole implements AutoCloseable {
             List<String> words = new ArrayList<>(line.words());
             int wordIndex = line.wordIndex();
             String current = line.word();
-            boolean newWord = line.line().endsWith(" ") || line.line().endsWith("\t");
-            if (newWord) {
-                wordIndex = words.size();
+            if (isCompletingNewWord(line)) {
+                words.add("");
+                wordIndex = words.size() - 1;
                 current = "";
             }
 
@@ -291,6 +294,15 @@ public class CommandConsole implements AutoCloseable {
             values.stream()
                     .filter(value -> value.startsWith(current))
                     .forEach(value -> candidates.add(new Candidate(value)));
+        }
+
+        private boolean isCompletingNewWord(ParsedLine line) {
+            String input = line.line();
+            return !input.isEmpty()
+                    && Character.isWhitespace(input.charAt(input.length() - 1))
+                    && (line.words().isEmpty()
+                    || line.wordIndex() >= line.words().size()
+                    || !line.word().isEmpty());
         }
     }
 }
